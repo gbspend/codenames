@@ -132,9 +132,18 @@ class Codenames:
 			if winner is not None:
 				return winner, self.hist
 
+def test():
+	blueShouldWin = bool(randint(0,1))
+	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(2 if blueShouldWin else 1), cnai.Cheatmaster(), cnai.CheatGuesser(1 if blueShouldWin else 2))
+	blueWon, dummy = game.play()
+	assert blueShouldWin == blueWon
+			
 if __name__ == "__main__":
 	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(2), cnai.Cheatmaster(), cnai.CheatGuesser(1))
 	print(game.play())
+	
+	for i in range(1000):
+		test()
 #
 
 
