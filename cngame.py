@@ -63,7 +63,7 @@ class Codenames:
 		self.spaces, self.selected = newGame(self.bluesTurn)
 		self.covered = [False] * BOARD_SIZE
 		
-		self.hist = [self.spaces, self.selected]
+		self.hist = [self.selected, self.spaces]
 		self.curr_hint = None
 		self.guesses_made = 0
 	
@@ -79,7 +79,7 @@ class Codenames:
 			board[color].append(word)
 		return board
 	
-	#return history
+	#return winner bool (T: blue, F: red) and history list
 	def play(self):
 		if any(self.covered):
 			raise ValueError("Game already finished. Call initGame() to start over.")
@@ -101,12 +101,13 @@ class Codenames:
 				self.curr_hint = master.makeHint(board) #(word,num) tuple
 				guesser.newHint(self.curr_hint)
 				self.guesses_made = 0
-				self.hist.append(("HINT", self.bluesTurn, *self.curr_hint))
+				self.hist.append(("HINT", 'U' if self.bluesTurn else 'R', *self.curr_hint))
 			else:
 				choices = [word for i,word in enumerate(self.selected) if not self.covered[i]]
 				guess = guesser.nextGuess(choices) #string from board
-				self.hist.append(("GUESS", self.bluesTurn, guess))
+				match = None
 				if guess is not None:
+					guess = guess
 					i = self.selected.index(guess)
 					assert not self.covered[i]
 					self.guesses_made += 1
@@ -114,36 +115,60 @@ class Codenames:
 					self.covered[i] = True
 					color = self.spaces[i]
 					match = (color == 'U' and self.bluesTurn) or (color == 'R' and not self.bluesTurn)
+				self.hist.append(("GUESS", 'U' if self.bluesTurn else 'R', guess, match))
 				if guess is None or not match or self.guesses_made > self.curr_hint[1]:
 					self.bluesTurn = not self.bluesTurn
 					self.curr_hint = None
 					self.guesses_made = 0
 			
-			#check if game is over
+			#check if game is over using most recently updated covered board
 			check = self.makeBoard()
 			winner = None #True for blue won, False red won
 			assert check['U'] or check['R'] #only one team can win at a time
 			if not check['A']:
-				winner = not self.bluesTurn
+				winner = self.bluesTurn #kinda counterintuitive, but if the team picked A it would have already switchted turns because it wasn't a correct guess
 			elif not check['U']:
 				winner = True
 			elif not check['R']:
 				winner = False
 			if winner is not None:
 				return winner, self.hist
-
-def test():
+#
+def pprintHist(hist):
+	print([(hist[0][i], hist[1][i]) for i in range(BOARD_SIZE)])
+	for h in hist[2:]:
+		if type(h) is not tuple:
+			print(h)
+		else:
+			tabs = 1 #HINT
+			if h[0] == "GUESS":
+				tabs = 2
+			print("\t"*tabs,h)
+	
+def sanity_test():
 	blueShouldWin = bool(randint(0,1))
 	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(2 if blueShouldWin else 1), cnai.Cheatmaster(), cnai.CheatGuesser(1 if blueShouldWin else 2))
 	blueWon, dummy = game.play()
 	assert blueShouldWin == blueWon
+
+#tests whether w2v can win with a terrible hint (CHEAT) each time against cheater-n
+def test1(n = 1):
+	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Cheatmaster(), cnai.W2VGuesser())
+	return game.play()
 			
 if __name__ == "__main__":
-	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(2), cnai.Cheatmaster(), cnai.CheatGuesser(1))
-	print(game.play())
+	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(2), cnai.Cheatmaster(), cnai.W2VGuesser())
+	winner, hist = game.play()
+	#print("Blue" if winner else "Red","won")
+	#pprintHist(hist)
+	
 	
 	for i in range(1000):
-		test()
+		winner, hist = test1()
+		if not winner:
+			print(i, "RED WON!")
+			pprintHist(hist)
+	
 #
 
 

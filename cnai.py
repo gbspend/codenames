@@ -67,7 +67,7 @@ class CheatGuesser(Guesser):
 	
 	def nextGuess(self, choices):
 		if self.answers is None:
-			raise ValueError("CheatGuesses was never given answers via cheat()")
+			raise ValueError("CheatGuesser was never given answers via cheat()")
 		if self.num_guesses < self.n:
 			self.num_guesses += 1
 			return self.answers.pop()
@@ -77,10 +77,29 @@ class CheatGuesser(Guesser):
 class W2VGuesser(Guesser):
 	def __init__(self):
 		super().__init__()
+		self.model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True, limit=500000)
+	
+	#kinda hacky, but w2v has New_York but not new_york etc
+	def fixCap(self, w):
+		try:
+			self.model.key_to_index[w]
+		except KeyError:
+			w = '_'.join([part[0].upper()+part[1:] for part in w.split('_')])
+		return w
 	
 	def nextGuess(self, choices):
-		raise NotImplementedError
-
+		hint = self.fixCap(self.curr_hint[0].lower())
+		max_v = -9999
+		max_w = None
+		for ch in choices:
+			ch = self.fixCap(ch)
+			s = self.model.similarity(hint, ch)
+			if s > max_v:
+				max_v = s
+				max_w = ch
+		self.num_guesses += 1
+		return max_w.lower()
+		
 #class GPT2PromptGuesser(Guesser):
 
 #class GPT2EmbedGuesser(Guesser):
@@ -106,3 +125,20 @@ class Cheatmaster(Spymaster):
 
 if __name__ == "__main__":
 	m = Spymaster(W2VAssoc())
+#
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
