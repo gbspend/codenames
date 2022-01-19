@@ -24,6 +24,7 @@ class W2VAssoc(Assoc):
 			restrict_vocab=50000
 		)
 
+#make sure all the codenames words are in GPT2 (check with Tokenizer)
 #class GPT2PromptAssoc(Assoc):
 
 #class GPT2EmbedAssoc(Assoc):
@@ -41,12 +42,13 @@ class Guesser:
 		self.curr_hint = hint
 		self.num_guesses = 0
 	
+	#returns one of the words from board as the guess
 	#game class will only ask for guesses if the guesser has some left
 	#abstract
 	def nextGuess(self, board):
 		raise NotImplementedError
 
-#answer_key is just list of correct guesses (or indices w/e)
+#answer_key is just list of that colors words
 #make sure to pair with Cheatmaster, otherwise the num in the hint might be less than self.n
 class CheatGuesser(Guesser):
 	def __init__(self, answer_key, n):
