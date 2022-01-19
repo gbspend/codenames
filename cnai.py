@@ -37,26 +37,37 @@ class Guesser:
 		self.curr_hint = None
 		self.num_guesses = 0 #increment with each guess, should never get higher than the num in hint[1]
 	
+	def isCheat(self):
+		return False
+	
 	#hint is (word,num) tuple
 	def newHint(self, hint):
 		self.curr_hint = hint
 		self.num_guesses = 0
 	
-	#returns one of the words from board as the guess
+	#returns one of the words from choices as the guess (not board, just list of possible words)
 	#game class will only ask for guesses if the guesser has some left
 	#abstract
-	def nextGuess(self, board):
+	def nextGuess(self, choices):
 		raise NotImplementedError
 
-#answer_key is just list of that colors words
 #make sure to pair with Cheatmaster, otherwise the num in the hint might be less than self.n
 class CheatGuesser(Guesser):
-	def __init__(self, answer_key, n):
+	def __init__(self, n):
 		super().__init__()
-		self.answers = answer_key
+		self.answers = None
 		self.n = n
 	
-	def nextGuess(self, board):
+	def isCheat(self):
+		return True
+	
+	#call this before every guess because board changes
+	def cheat(self, board, isBlue):
+		self.answers = board['U'] if isBlue else board['R']
+	
+	def nextGuess(self, choices):
+		if self.answers is None:
+			raise ValueError("CheatGuesses was never given answers via cheat()")
 		if self.num_guesses < self.n:
 			self.num_guesses += 1
 			return self.answers.pop()
@@ -67,7 +78,7 @@ class W2VGuesser(Guesser):
 	def __init__(self):
 		super().__init__()
 	
-	def nextGuess(self, board):
+	def nextGuess(self, choices):
 		raise NotImplementedError
 
 #class GPT2PromptGuesser(Guesser):
@@ -84,7 +95,7 @@ class Spymaster:
 		raise NotImplementedError
 		#TODO copy spymast() from cn.py to start
 
-class Cheatmaster:
+class Cheatmaster(Spymaster):
 	def __init__(self):
 		super().__init__(None) #doesn't need Assoc
 	

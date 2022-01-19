@@ -34,7 +34,7 @@ words = [
 ]
 
 #(not going to bother with the preset board layout cards)
-def makeBoard(blueFirst=True):	
+def newGame(blueFirst=True):	
 	#I don't know how many red/blue for anything other than 5x5
 	
 	spaces = ['U']*8 + ['R']*8 + ['N']*7 + ['A']
@@ -60,10 +60,10 @@ class Codenames:
 	def initGame(self):
 		#make "blue" always start if it's 1 player
 		self.bluesTurn = bool(randint(0,1))
-		self.spaces, self.selected = makeBoard(self.bluesTurn)
+		self.spaces, self.selected = newGame(self.bluesTurn)
 		self.covered = [False] * BOARD_SIZE
 		
-		self.hist = []
+		self.hist = [self.spaces, self.selected]
 		self.curr_hint = None
 		self.guesses_made = 0
 	
@@ -74,15 +74,80 @@ class Codenames:
 		for i in range(BOARD_SIZE):
 			if self.covered[i]:
 				continue
-			color = spaces[i]
-			word = selected[i]
+			color = self.spaces[i]
+			word = self.selected[i]
 			board[color].append(word)
 		return board
 	
 	#return history
 	def play(self):
-		pass
+		if any(self.covered):
+			raise ValueError("Game already finished. Call initGame() to start over.")
+		while True:
+			#debug:
+			#print(self.hist[2:])
+			#print()
+			
+			master = self.blue_spymaster if self.bluesTurn else self.red_spymaster
+			guesser = self.blue_guesser if self.bluesTurn else self.red_guesser
+			
+			board = self.makeBoard()
+			
+			#for testing
+			if guesser.isCheat():
+				guesser.cheat(board, self.bluesTurn)
+			
+			if not self.curr_hint:
+				self.curr_hint = master.makeHint(board) #(word,num) tuple
+				guesser.newHint(self.curr_hint)
+				self.guesses_made = 0
+				self.hist.append(("HINT", self.bluesTurn, *self.curr_hint))
+			else:
+				choices = [word for i,word in enumerate(self.selected) if not self.covered[i]]
+				guess = guesser.nextGuess(choices) #string from board
+				self.hist.append(("GUESS", self.bluesTurn, guess))
+				if guess is not None:
+					i = self.selected.index(guess)
+					assert not self.covered[i]
+					self.guesses_made += 1
+
+					self.covered[i] = True
+					color = self.spaces[i]
+					match = (color == 'U' and self.bluesTurn) or (color == 'R' and not self.bluesTurn)
+				if guess is None or not match or self.guesses_made > self.curr_hint[1]:
+					self.bluesTurn = not self.bluesTurn
+					self.curr_hint = None
+					self.guesses_made = 0
+			
+			#check if game is over
+			check = self.makeBoard()
+			winner = None #True for blue won, False red won
+			assert check['U'] or check['R'] #only one team can win at a time
+			if not check['A']:
+				winner = not self.bluesTurn
+			elif not check['U']:
+				winner = True
+			elif not check['R']:
+				winner = False
+			if winner is not None:
+				return winner, self.hist
 
 if __name__ == "__main__":
-	game = Codenames1P()
-	game.play()
+	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(2), cnai.Cheatmaster(), cnai.CheatGuesser(1))
+	print(game.play())
+#
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
