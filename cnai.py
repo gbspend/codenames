@@ -106,13 +106,30 @@ class W2VGuesser(Guesser):
 
 #===========================================
 
+def powerset(iterable, rng=range(2,5)):
+	s = list(iterable)
+	return chain.from_iterable(combinations(s, r) for r in rng)
+
+#should be model-agnostic
 class Spymaster:
 	def __init__(self, assoc):
 		self.assoc = assoc #subclass of Assoc class
 	
 	def makeHint(self, board):
-		raise NotImplementedError
-		#TODO copy spymast() from cn.py to start
+		neg = board['N'] + board['A'] + board['R'] if blue else board['U']
+		pos = board['U'] if blue else board['R']
+
+		options = []
+		#try all combos to find the one we're most sure of
+		#IDEA: if there are only 3-4 words left, lean more toward hail marys
+		for combo in powerset(pos):
+			self.assoc.getAssoc(pos,neg)
+			#append combo so we know # (and for debug)
+			#also filter out _ (phrases) and hints containing one of the words in the combo (against the rules)
+			curr = [(*hint,combo) for hint in curr if '_' not in hint[0] and not containsAny(hint[0], combo)]
+			options += curr[:5] #try just top 5 (after filtering)
+
+		options.sort(key=lambda x: x[1], reverse=True)
 
 class Cheatmaster(Spymaster):
 	def __init__(self):

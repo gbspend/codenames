@@ -69,6 +69,10 @@ def containsAny(source, targets):
 			return True
 	return False
 
+#checks for valid hints: one word only, no acronyms
+def isValid(word):
+	return '_' not in word and not word.isupper()
+
 def spymast(model,board,blue=True):
 	pp.pprint(board)
 	
@@ -86,14 +90,15 @@ def spymast(model,board,blue=True):
 		)
 		#append combo so we know # (and for debug)
 		#also filter out _ (phrases) and hints containing one of the words in the combo (against the rules)
-		curr = [(*hint,combo) for hint in curr if '_' not in hint[0] and not containsAny(hint[0], combo)]
+		curr = [(*hint,combo) for hint in curr if isValid(hint[0]) and not containsAny(hint[0], combo)]
 		options += curr[:5] #try just top 5
 	
 	options.sort(key=lambda x: x[1], reverse=True)
+	pp.pprint(options)
 	
 	#collapse duplicate hints into one (preserve prob + target words)
-	coll = defaultdict(list)
-	order = defaultdict(float)
+	coll = defaultdict(list) #"collapsed", dict mapping hint to list of combos for that word
+	order = defaultdict(float) #maps hint to highest similarity ("prob") of all that hint's combos
 	for t in options:
 		hint,prob,target = t
 		coll[hint].append((prob,target))
@@ -102,7 +107,7 @@ def spymast(model,board,blue=True):
 	top_hints = sorted(list(order.keys()), key=lambda k: order[k], reverse=True)
 	for hint in top_hints[:10]:
 		print(hint)
-		for combo in coll[hint]:
+		for combo in coll[hint][:5]:
 			print("\t",combo[1])
 	return #
 	
@@ -129,7 +134,7 @@ if __name__ == '__main__':
 			model.key_to_index[w]
 		except KeyError:
 			cap = '_'.join([part[0].upper()+part[1:] for part in w.split('_')])
-			print(w,cap)
+			#print(w,cap)
 			try:
 				model.key_to_index[cap]
 			except KeyError:
