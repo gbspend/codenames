@@ -165,8 +165,9 @@ if __name__ == "__main__":
 	for i in range(10):
 		winner, hist = testCheatVsW2V(1)
 		print(i, "Blue won..." if winner else "RED WON!")
-		pprintHist(hist)
-		print()
+		if not winner:
+			pprintHist(hist)
+			print()
 	
 #
 

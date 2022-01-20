@@ -209,15 +209,35 @@ if __name__ == "__main__":
 #
 
 '''
-Outstanding bugs
+OUTSTANDING BUGS:
 File "cngame.py", line 107, in play
     guess = guesser.nextGuess(choices) #string from board
   File "/home/brad/codenames/cnai.py", line 99, in nextGuess
     s = self.model.similarity(hint, ch)
 KeyError: "Key 'Csa' not present"
 
+Traceback (most recent call last):
+  File "cngame.py", line 166, in <module>
+    winner, hist = testCheatVsW2V(1)
+  File "cngame.py", line 162, in testCheatVsW2V
+    return game.play()
+  File "cngame.py", line 101, in play
+    self.curr_hint = master.makeHint(board, self.bluesTurn) # returns (word,num) tuple
+  File "/home/brad/codenames/cnai.py", line 162, in makeHint
+    curr = self.assoc.getAssocs(list(combo),neg)
+  File "/home/brad/codenames/cnai.py", line 27, in getAssocs
+    return self.model.most_similar(
+  File "/home/brad/.local/lib/python3.8/site-packages/gensim/models/keyedvectors.py", line 773, in most_similar
+    mean.append(weight * self.get_vector(key, norm=True))
+  File "/home/brad/.local/lib/python3.8/site-packages/gensim/models/keyedvectors.py", line 438, in get_vector
+    index = self.get_index(key)
+  File "/home/brad/.local/lib/python3.8/site-packages/gensim/models/keyedvectors.py", line 412, in get_index
+    raise KeyError(f"Key '{key}' not present")
+KeyError: "Key 'a' not present"
+??? How "list(combo)" and "neg" are drawn from the board! how did "a" (or "Csa") get in there???
 
 
+FIXED
 "TypeError: object of type 'NoneType' has no len()" for len(max_combo) in the return statement of makeHint (for W2V Assoc)
 Happened when RED was trying to make a hint for:
 	{'U': ['death', 'pole'], 'R': ['saturn'], 'N': ['mole', 'root', 'casino', 'cycle', 'bear'], 'A': ['chest']}
