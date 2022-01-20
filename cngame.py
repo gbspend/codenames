@@ -98,7 +98,7 @@ class Codenames:
 				guesser.cheat(board, self.bluesTurn)
 			
 			if not self.curr_hint:
-				self.curr_hint = master.makeHint(board) #(word,num) tuple
+				self.curr_hint = master.makeHint(board, self.bluesTurn) # returns (word,num) tuple
 				guesser.newHint(self.curr_hint)
 				self.guesses_made = 0
 				self.hist.append(("HINT", 'U' if self.bluesTurn else 'R', *self.curr_hint))
@@ -152,22 +152,21 @@ def sanity_test():
 	assert blueShouldWin == blueWon
 
 #tests whether w2v can win with a terrible hint (CHEAT) each time against cheater-n
-def test1(n = 1):
+def testcheatw2v(n = 1):
 	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Cheatmaster(), cnai.W2VGuesser())
 	return game.play()
+
+#play 1 game of cheater-n (U) vs W2V hinter/guesser (R)
+def testCheatVsW2V(n):
+	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Spymaster(cnai.W2VAssoc()), cnai.W2VGuesser())
+	return game.play()
 			
-if __name__ == "__main__":
-	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(2), cnai.Cheatmaster(), cnai.W2VGuesser())
-	winner, hist = game.play()
-	#print("Blue" if winner else "Red","won")
-	#pprintHist(hist)
-	
-	
-	for i in range(1000):
-		winner, hist = test1()
-		if not winner:
-			print(i, "RED WON!")
-			pprintHist(hist)
+if __name__ == "__main__":	
+	for i in range(10):
+		winner, hist = testCheatVsW2V(1)
+		print(i, "Blue won..." if winner else "RED WON!")
+		pprintHist(hist)
+		print()
 	
 #
 

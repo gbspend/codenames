@@ -1,5 +1,11 @@
 import gensim
+from collections import defaultdict
+from itertools import chain, combinations
 from random import randrange
+
+#checks for valid hints: one word only, no acronyms, all alphabetical chars
+def isValid(word):
+	return '_' not in word and not word.isupper() and word.isalpha()
 
 #associates words for a given set of positively and negatively associated words
 #abstract superclass, implement for given LM
@@ -9,7 +15,7 @@ class Assoc:
 	
 	#returns a list of potential associations with a confidence/prob for each
 	#abstract function
-	def getAssoc(self, pos, neg):
+	def getAssocs(self, pos, neg):
 		raise NotImplementedError
 
 class W2VAssoc(Assoc):
@@ -17,8 +23,8 @@ class W2VAssoc(Assoc):
 		super().__init__()
 		self.model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True, limit=500000)
 	
-	def getAssoc(self, pos, neg):
-		return model.most_similar(
+	def getAssocs(self, pos, neg):
+		return self.model.most_similar(
 			positive=pos,
 			negative=neg,
 			restrict_vocab=50000
@@ -74,25 +80,26 @@ class CheatGuesser(Guesser):
 		else:
 			return None
 
+#return capitalized version of w if w not in model
+#kinda hacky, but w2v has New_York but not new_york etc
+def fixCap(model, w):
+	try:
+		model.key_to_index[w]
+	except KeyError:
+		w = '_'.join([part[0].upper()+part[1:] for part in w.split('_')])
+	return w
+
 class W2VGuesser(Guesser):
 	def __init__(self):
 		super().__init__()
 		self.model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True, limit=500000)
 	
-	#kinda hacky, but w2v has New_York but not new_york etc
-	def fixCap(self, w):
-		try:
-			self.model.key_to_index[w]
-		except KeyError:
-			w = '_'.join([part[0].upper()+part[1:] for part in w.split('_')])
-		return w
-	
 	def nextGuess(self, choices):
-		hint = self.fixCap(self.curr_hint[0].lower())
+		hint = fixCap(self.model, self.curr_hint[0].lower())
 		max_v = -9999
 		max_w = None
 		for ch in choices:
-			ch = self.fixCap(ch)
+			ch = fixCap(self.model, ch)
 			s = self.model.similarity(hint, ch)
 			if s > max_v:
 				max_v = s
@@ -115,41 +122,108 @@ class Spymaster:
 	def __init__(self, assoc):
 		self.assoc = assoc #subclass of Assoc class
 	
-	def makeHint(self, board):
-		neg = board['N'] + board['A'] + board['R'] if blue else board['U']
+	class Combo:
+		def __init__(self):
+			self.scores = [] #all similarity scores gen'd for this combo, regardless of hint
+			#also track hint with max sim score
+			self.max_hint = None
+			self.max_sim = -9999
+		
+		def addOption(self, hint, sim):
+			self.scores.append(sim)
+			if self.max_sim < sim:
+				self.max_sim = sim
+				self.max_hint = hint
+		
+		def getAvgSim(self):
+			return sum(self.scores)/len(self.scores)
+	
+	#returns (hint, number) tuple
+	#IDEA: if there are only 3-4 words left, lean more toward hail marys
+	def makeHint(self, board, blue):
+		neg = board['N'] + board['A'] + (board['R'] if blue else board['U'])
 		pos = board['U'] if blue else board['R']
+		
+		#hacky, but w2v is picky about capitals
+		neg = [fixCap(self.assoc.model, w) for w in neg]
+		pos = [fixCap(self.assoc.model, w) for w in pos]
 
-		options = []
-		#try all combos to find the one we're most sure of
-		#IDEA: if there are only 3-4 words left, lean more toward hail marys
-		for combo in powerset(pos):
-			self.assoc.getAssoc(pos,neg)
-			#append combo so we know # (and for debug)
-			#also filter out _ (phrases) and hints containing one of the words in the combo (against the rules)
-			curr = [(*hint,combo) for hint in curr if '_' not in hint[0] and not containsAny(hint[0], combo)]
-			options += curr[:5] #try just top 5 (after filtering)
-
-		options.sort(key=lambda x: x[1], reverse=True)
+		#Game AI approach:
+		#1. find combo with highest avg hint similarity (hyp: most likely to be closest related combo)
+		#2. pick the highest-scoring hint for that combo as our hint (# is just len of combo ofc)
+		
+		combos = defaultdict(Spymaster.Combo)
+		
+		if len(pos) == 1: #powerset 2-4 will return []!
+			pow_set = pos
+		else:
+			pow_set = powerset(pos)
+		for combo in pow_set:
+			curr = self.assoc.getAssocs(list(combo),neg)
+			for hint,sim in curr:
+				if isValid(hint):
+					combos[combo].addOption(hint, sim)
+		
+		max_avg_sim = -9999
+		max_combo = None
+		
+		 # bc I got "TypeError: object of type 'NoneType' has no len()" for len(max_combo) below???
+		if not combos.keys():
+			print(board,blue,pos,neg)
+			assert False
+		
+		for combo in combos.keys():
+			avg_sim = combos[combo].getAvgSim()
+			if max_avg_sim < avg_sim:
+				max_avg_sim = avg_sim
+				max_combo = combo
+		
+		#print(max_combo) #DEBUG
+		return (combos[max_combo].max_hint, len(max_combo))
+		
 
 class Cheatmaster(Spymaster):
 	def __init__(self):
 		super().__init__(None) #doesn't need Assoc
 	
-	def makeHint(self, board):
+	def makeHint(self, board, blue):
 		return ("CHEAT", 9999) #this is so the cheat guesser can (perfectly) guess as many times as it needs
 
 #===========================================
 
 if __name__ == "__main__":
+	board = {
+		'U': [
+			'ambulance', 'hospital', 'spell', 'lock', 
+			'charge', 'tail', 'link', 'cook', 'web'
+		],
+		'R': [
+			'cat', 'button', 'pipe', 'pants', 
+			'mount', 'sleep', 'stick', 'file'
+		],
+		'N': ["giant", "nail", "dragon", "stadium", "flute", "carrot", "wake"],
+		'A': ['doctor']
+	}
 	m = Spymaster(W2VAssoc())
+	print(m.makeHint(board, True))
 #
 
+'''
+Outstanding bugs
+File "cngame.py", line 107, in play
+    guess = guesser.nextGuess(choices) #string from board
+  File "/home/brad/codenames/cnai.py", line 99, in nextGuess
+    s = self.model.similarity(hint, ch)
+KeyError: "Key 'Csa' not present"
 
 
 
+"TypeError: object of type 'NoneType' has no len()" for len(max_combo) in the return statement of makeHint (for W2V Assoc)
+Happened when RED was trying to make a hint for:
+	{'U': ['death', 'pole'], 'R': ['saturn'], 'N': ['mole', 'root', 'casino', 'cycle', 'bear'], 'A': ['chest']}
+It happens when len(pos) is 1!
 
-
-
+'''
 
 
 

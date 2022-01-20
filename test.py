@@ -69,14 +69,14 @@ def containsAny(source, targets):
 			return True
 	return False
 
-#checks for valid hints: one word only, no acronyms
+#checks for valid hints: one word only, no acronyms, all alphabetical chars
 def isValid(word):
-	return '_' not in word and not word.isupper()
+	return '_' not in word and not word.isupper() and word.isalpha()
 
 def spymast(model,board,blue=True):
 	pp.pprint(board)
 	
-	neg = board['N'] + board['A'] + board['R'] if blue else board['U']
+	neg = board['N'] + board['A'] + (board['R'] if blue else board['U'])
 	pos = board['U'] if blue else board['R']
 	
 	options = []
@@ -96,19 +96,24 @@ def spymast(model,board,blue=True):
 	options.sort(key=lambda x: x[1], reverse=True)
 	pp.pprint(options)
 	
-	#collapse duplicate hints into one (preserve prob + target words)
+	#collapse duplicate hints into one (preserve prob + words combo)
 	coll = defaultdict(list) #"collapsed", dict mapping hint to list of combos for that word
 	order = defaultdict(float) #maps hint to highest similarity ("prob") of all that hint's combos
 	for t in options:
-		hint,prob,target = t
-		coll[hint].append((prob,target))
+		hint,prob,combo = t
+		coll[hint].append((prob,combo))
 		order[hint] = max(prob, order[hint])
 	
 	top_hints = sorted(list(order.keys()), key=lambda k: order[k], reverse=True)
+	best_avg_hints = sorted(list(coll.keys()), key=lambda k: sum([prob for prob,combo in coll[k]])/len(coll[k]), reverse=True)
+	pp.pprint(top_hints[:20])
+	pp.pprint(best_avg_hints[:20])
+	'''
 	for hint in top_hints[:10]:
 		print(hint)
 		for combo in coll[hint][:5]:
 			print("\t",combo[1])
+	'''
 	return #
 	
 	temp = [(hint[0], "{:.4f}".format(hint[1]), hint[2]) for hint in options] #truncate floats for readability
