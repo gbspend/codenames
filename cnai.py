@@ -7,6 +7,12 @@ from random import randrange
 from sentence_transformers import util
 from transformers import GPT2Model, GPT2Tokenizer
 
+#=HELPERS===================================
+
+def powerset(iterable, rng=range(2,5)):
+	s = list(iterable)
+	return chain.from_iterable(combinations(s, r) for r in rng)
+
 #checks for valid hints: one word only, no acronyms, all alphabetical chars
 def isValid(word):
 	return '_' not in word and not word.isupper() and word.isalpha()
@@ -18,7 +24,23 @@ def w2vPreprocess(model, w):
 		w = '_'.join([part[0].upper()+part[1:] for part in w.split('_')])
 	return w
 
-#===========================================
+#TODO: capitalization? :/
+#	>>> print(tokenizer.encode("new york", return_tensors='pt'))
+#	>>> print(tokenizer.encode("New York", return_tensors='pt'))
+#	tensor([[3605,  331,  967]])
+#	tensor([[3791, 1971]])
+def GPT2Preprocess(w):
+	return w.replace("_", " ")
+
+# ｡･:*:･ﾟ★,｡･:*:･ﾟ☆
+def embed2Tok(lm, embed):
+	embed = torch.from_numpy(embed)
+	head = lm.lm_head
+	probs = head(embed)
+	return torch.argmax(probs)
+# ｡･:*:･ﾟ★,｡･:*:･ﾟ☆
+
+#=ASSOC=====================================
 
 #associates words for a given set of positively and negatively associated words
 #abstract superclass, implement for given LM
@@ -49,13 +71,22 @@ class W2VAssoc(Assoc):
 	
 	def preprocess(self, w):
 		return w2vPreprocess(self.model, w)
+	
+class GPT2EmbedAssoc(Assoc):
+	def __init__(self):
+		super().__init__()
+		self.lm = GPT2LMHeadModel.from_pretrained("gpt2")
+	
+	def preprocess(self,w):
+		return GPT2Preprocess(self.lm, w)
+	
+	def getAssocs(self, pos, neg):
+		pass #TODO
 
 #make sure all the codenames words are in GPT2 (check with Tokenizer)
 #class GPT2PromptAssoc(Assoc):
 
-#class GPT2EmbedAssoc(Assoc):
-
-#===========================================
+#=GUESSER===================================
 
 #NOTE: guess may be None for "pass"
 #Maybe rename/refactor to SimilarityGuesser?
@@ -166,22 +197,12 @@ class GPT2EmbedGuesser(Guesser):
 		squozen = np.squeeze(cos_sim.numpy())
 		return float(np.mean(squozen))
 		
-	
-	#TODO: capitalization? :/
-	#	>>> print(tokenizer.encode("new york", return_tensors='pt'))
-	#	>>> print(tokenizer.encode("New York", return_tensors='pt'))
-	#	tensor([[3605,  331,  967]])
-	#	tensor([[3791, 1971]])
 	def preprocess(self, w):
-		return w.replace("_", " ")
-
+		return GPT2Preprocess(w)
+	
 #class GPT2PromptGuesser(Guesser):
 
-#===========================================
-
-def powerset(iterable, rng=range(2,5)):
-	s = list(iterable)
-	return chain.from_iterable(combinations(s, r) for r in rng)
+#=SPYMASTER=================================
 
 #should be model-agnostic
 class Spymaster:
@@ -260,7 +281,7 @@ class Cheatmaster(Spymaster):
 	def makeHint(self, board, blue):
 		return ("CHEAT", 9999) #this is so the cheat guesser can (perfectly) guess as many times as it needs
 
-#===========================================
+#=TEST======================================
 
 if __name__ == "__main__":
 	board = {
