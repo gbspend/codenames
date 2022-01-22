@@ -38,6 +38,7 @@ class W2VAssoc(Assoc):
 #===========================================
 
 #NOTE: guess may be None for "pass"
+#Maybe rename/refactor to SimilarityGuesser?
 class Guesser:
 	def __init__(self):
 		self.curr_hint = None
@@ -53,8 +54,22 @@ class Guesser:
 	
 	#returns one of the words from choices as the guess (not board, just list of possible words)
 	#game class will only ask for guesses if the guesser has some left
-	#abstract
 	def nextGuess(self, choices):
+		hint = fixCap(self.model, self.curr_hint[0].lower())
+		max_v = -9999
+		max_w = None
+		for ch in choices:
+			ch = fixCap(self.model, ch)
+			s = self.getSimilarity(hint, ch)
+			if s > max_v:
+				max_v = s
+				max_w = ch
+		self.num_guesses += 1
+		return max_w.lower()
+	
+	#return the similarity between 2 words
+	#ABSTRACT
+	def getSimilarity(self, a, b):
 		raise NotImplementedError
 
 #make sure to pair with Cheatmaster, otherwise the num in the hint might be less than self.n
@@ -94,6 +109,7 @@ class W2VGuesser(Guesser):
 		super().__init__()
 		self.model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True, limit=500000)
 	
+	'''
 	def nextGuess(self, choices):
 		hint = fixCap(self.model, self.curr_hint[0].lower())
 		max_v = -9999
@@ -106,6 +122,11 @@ class W2VGuesser(Guesser):
 				max_w = ch
 		self.num_guesses += 1
 		return max_w.lower()
+	'''
+	
+	def getSimilarity(self, a, b): 
+		return self.model.similarity(a, b)
+	
 		
 #class GPT2PromptGuesser(Guesser):
 
