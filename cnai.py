@@ -1,11 +1,24 @@
 import gensim
+import numpy as np
+import torch
 from collections import defaultdict
 from itertools import chain, combinations
 from random import randrange
+from sentence_transformers import util
+from transformers import GPT2Model, GPT2Tokenizer
 
 #checks for valid hints: one word only, no acronyms, all alphabetical chars
 def isValid(word):
 	return '_' not in word and not word.isupper() and word.isalpha()
+
+def w2vPreprocess(model, w):
+	try:
+		model.key_to_index[w]
+	except KeyError:
+		w = '_'.join([part[0].upper()+part[1:] for part in w.split('_')])
+	return w
+
+#===========================================
 
 #associates words for a given set of positively and negatively associated words
 #abstract superclass, implement for given LM
@@ -16,6 +29,10 @@ class Assoc:
 	#returns a list of potential associations with a confidence/prob for each
 	#abstract function
 	def getAssocs(self, pos, neg):
+		raise NotImplementedError
+	
+	#preprocess word before getting embedding (e.g. w2v checks capitalization, gpt converts _ to space)
+	def preprocess(self, w):
 		raise NotImplementedError
 
 class W2VAssoc(Assoc):
@@ -29,6 +46,9 @@ class W2VAssoc(Assoc):
 			negative=neg,
 			restrict_vocab=50000
 		)
+	
+	def preprocess(self, w):
+		return w2vPreprocess(self.model, w)
 
 #make sure all the codenames words are in GPT2 (check with Tokenizer)
 #class GPT2PromptAssoc(Assoc):
@@ -55,11 +75,11 @@ class Guesser:
 	#returns one of the words from choices as the guess (not board, just list of possible words)
 	#game class will only ask for guesses if the guesser has some left
 	def nextGuess(self, choices):
-		hint = fixCap(self.model, self.curr_hint[0].lower())
+		hint = self.preprocess(self.curr_hint[0].lower())
 		max_v = -9999
 		max_w = None
 		for ch in choices:
-			ch = fixCap(self.model, ch)
+			ch = self.preprocess(ch)
 			s = self.getSimilarity(hint, ch)
 			if s > max_v:
 				max_v = s
@@ -70,6 +90,10 @@ class Guesser:
 	#return the similarity between 2 words
 	#ABSTRACT
 	def getSimilarity(self, a, b):
+		raise NotImplementedError
+	
+	#preprocess word before getting embedding (e.g. w2v checks capitalization, gpt converts _ to space)
+	def preprocess(self, w):
 		raise NotImplementedError
 
 #make sure to pair with Cheatmaster, otherwise the num in the hint might be less than self.n
@@ -95,42 +119,63 @@ class CheatGuesser(Guesser):
 		else:
 			return None
 
-#return capitalized version of w if w not in model
-#kinda hacky, but w2v has New_York but not new_york etc
-def fixCap(model, w):
-	try:
-		model.key_to_index[w]
-	except KeyError:
-		w = '_'.join([part[0].upper()+part[1:] for part in w.split('_')])
-	return w
-
 class W2VGuesser(Guesser):
 	def __init__(self):
 		super().__init__()
 		self.model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True, limit=500000)
 	
-	'''
-	def nextGuess(self, choices):
-		hint = fixCap(self.model, self.curr_hint[0].lower())
-		max_v = -9999
-		max_w = None
-		for ch in choices:
-			ch = fixCap(self.model, ch)
-			s = self.model.similarity(hint, ch)
-			if s > max_v:
-				max_v = s
-				max_w = ch
-		self.num_guesses += 1
-		return max_w.lower()
-	'''
-	
 	def getSimilarity(self, a, b): 
 		return self.model.similarity(a, b)
 	
+	#return capitalized version of w if w not in model
+	#kinda hacky, but w2v has New_York but not new_york etc
+	def preprocess(self, w):
+		return w2vPreprocess(self.model, w)
 		
-#class GPT2PromptGuesser(Guesser):
+class GPT2EmbedGuesser(Guesser):
+	def __init__(self):
+		super().__init__()
+		self.model = GPT2Model.from_pretrained("gpt2")
+		self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+	
+	def getSimilarity(self, a, b):
+		#tokenizer may result in len > 1, even for single word
+		a_ids = self.tokenizer.encode(a, return_tensors='pt')
+		b_ids = self.tokenizer.encode(b, return_tensors='pt')
+		
+		#if embeddings are different lengths, append padding to shorter
+		diff = abs(len(a_ids) > len(b_ids))
+		if diff:
+			pad = torch.full((1,diff), self.tokenizer.eos_token_id)
+			#the 1 in "(1,diff)" comes from input_ids
+			#	tokenizing "robin, line, plate, band, " results in a torch.Size([1, 10]) tensor: tensor([[ 305, 8800,   11, 1627,   11, 7480,   11, 4097,   11,  220]])
+			if len(a_ids) > len(b_ids):
+				b_ids = torch.cat([b_ids,pad],1) #dim=1 because, again, shape from tokenizer
+			else:
+				a_ids = torch.cat([a_ids,pad],1)
+			
+		a_embeds =  self.model.get_input_embeddings()(a_ids)
+		b_embeds =  self.model.get_input_embeddings()(b_ids)
+		
+		assert len(a_embeds) == len(b_embeds)
+		
+		a_embeds = np.squeeze(a_embeds.detach().numpy())
+		b_embeds = np.squeeze(b_embeds.detach().numpy())
+		
+		cos_sim = util.cos_sim(a_embeds, b_embeds)
+		squozen = np.squeeze(cos_sim.numpy())
+		return float(np.mean(squozen))
+		
+	
+	#TODO: capitalization? :/
+	#	>>> print(tokenizer.encode("new york", return_tensors='pt'))
+	#	>>> print(tokenizer.encode("New York", return_tensors='pt'))
+	#	tensor([[3605,  331,  967]])
+	#	tensor([[3791, 1971]])
+	def preprocess(self, w):
+		return w.replace("_", " ")
 
-#class GPT2EmbedGuesser(Guesser):
+#class GPT2PromptGuesser(Guesser):
 
 #===========================================
 
@@ -166,8 +211,13 @@ class Spymaster:
 		pos = board['U'] if blue else board['R']
 		
 		#hacky, but w2v is picky about capitals
-		neg = [fixCap(self.assoc.model, w) for w in neg]
-		pos = [fixCap(self.assoc.model, w) for w in pos]
+		neg = [self.assoc.preprocess(w) for w in neg]
+		pos = [self.assoc.preprocess(w) for w in pos]
+		
+		#DEBUG (see bug below):
+		if 'a' in pos or 'a' in neg:
+			print(blue,board,pos,neg)
+			assert False
 
 		#Game AI approach:
 		#1. find combo with highest avg hint similarity (hyp: most likely to be closest related combo)
@@ -226,7 +276,16 @@ if __name__ == "__main__":
 		'A': ['doctor']
 	}
 	m = Spymaster(W2VAssoc())
-	print(m.makeHint(board, True))
+	hint = m.makeHint(board, True)
+	gg = GPT2EmbedGuesser()
+	
+	test = gg.getSimilarity("dog","cat")
+	print(test, type(test))
+	
+	gg.newHint(hint)
+	choices = sum(board.values(), [])
+	print(gg.nextGuess(choices))
+
 #
 
 '''
@@ -238,15 +297,15 @@ File "cngame.py", line 107, in play
 KeyError: "Key 'Csa' not present"
 
 Traceback (most recent call last):
-  File "cngame.py", line 166, in <module>
-    winner, hist = testCheatVsW2V(1)
-  File "cngame.py", line 162, in testCheatVsW2V
+  File "cngame.py", line 171, in <module>
+    winner, hist = testCheatVsW2VGPT(1)
+  File "cngame.py", line 167, in testCheatVsW2VGPT
     return game.play()
   File "cngame.py", line 101, in play
     self.curr_hint = master.makeHint(board, self.bluesTurn) # returns (word,num) tuple
-  File "/home/brad/codenames/cnai.py", line 162, in makeHint
+  File "/home/brad/codenames/cnai.py", line 228, in makeHint
     curr = self.assoc.getAssocs(list(combo),neg)
-  File "/home/brad/codenames/cnai.py", line 27, in getAssocs
+  File "/home/brad/codenames/cnai.py", line 44, in getAssocs
     return self.model.most_similar(
   File "/home/brad/.local/lib/python3.8/site-packages/gensim/models/keyedvectors.py", line 773, in most_similar
     mean.append(weight * self.get_vector(key, norm=True))
@@ -255,7 +314,10 @@ Traceback (most recent call last):
   File "/home/brad/.local/lib/python3.8/site-packages/gensim/models/keyedvectors.py", line 412, in get_index
     raise KeyError(f"Key '{key}' not present")
 KeyError: "Key 'a' not present"
+
+Has happened more than once but infrequently: I have a debug if to catch it above...
 ??? How "list(combo)" and "neg" are drawn from the board! how did "a" (or "Csa") get in there???
+
 
 
 FIXED

@@ -51,6 +51,7 @@ def newGame(blueFirst=True):
 #probably need to reimplement to add human players (async?)
 class Codenames:
 	def __init__(self, us, ug, rs, rg):
+		self.count_assassin = True #switch this off manually to ignore assassin ("easy mode")
 		self.blue_spymaster = us
 		self.blue_guesser = ug
 		self.red_spymaster = rs
@@ -107,7 +108,7 @@ class Codenames:
 				guess = guesser.nextGuess(choices) #string from board
 				match = None
 				if guess is not None:
-					guess = guess
+					guess = guess.replace(" ","_")
 					i = self.selected.index(guess)
 					assert not self.covered[i]
 					self.guesses_made += 1
@@ -125,7 +126,7 @@ class Codenames:
 			check = self.makeBoard()
 			winner = None #True for blue won, False red won
 			assert check['U'] or check['R'] #only one team can win at a time
-			if not check['A']:
+			if self.count_assassin and not check['A']:
 				winner = self.bluesTurn #kinda counterintuitive, but if the team picked A it would have already switchted turns because it wasn't a correct guess
 			elif not check['U']:
 				winner = True
@@ -160,10 +161,16 @@ def testcheatw2v(n = 1):
 def testCheatVsW2V(n):
 	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Spymaster(cnai.W2VAssoc()), cnai.W2VGuesser())
 	return game.play()
+
+#play 1 game of cheater-n (U) vs W2V hinter + GPT2Embed guesser (R)
+def testCheatVsW2VGPT(n, assas=True):
+	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Spymaster(cnai.W2VAssoc()), cnai.GPT2EmbedGuesser())
+	game.count_assassin = assas
+	return game.play()
 			
 if __name__ == "__main__":	
 	for i in range(10):
-		winner, hist = testCheatVsW2V(1)
+		winner, hist = testCheatVsW2VGPT(1,False)
 		print(i, "Blue won..." if winner else "RED WON!")
 		if not winner:
 			pprintHist(hist)
