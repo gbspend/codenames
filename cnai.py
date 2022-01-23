@@ -90,15 +90,17 @@ class GPT2EmbedAssoc(Assoc):
 	
 	#gets a normalized embedding vector for word w
 	def getNormVec(self,w):
-		ids = torch.squeeze(self.tokenizer.encode(w, return_tensors='pt'))
-		embed = self.vectors[ids]
-		norm = np.linalg.norm(embed)
-		return embed/norm
+		ids = self.tokenizer.encode(w, return_tensors='pt')[0].tolist()
+		ret = []
+		for i in ids: #do each individually because one word may result in more than one id
+			embed = self.vectors[i]
+			norm = np.linalg.norm(embed)
+			ret.append((embed/norm,i))
+		return ret
 	
 	#takes list of pos embeddings and list of neg embeddings and returns topn most similar embeddings
 	#	alg from most_similar in RaRe-Technologies/gensim/gensim/models/keyedvectors.py line 703
 	def getAssocs(self, pos, neg, topn):
-		clip_start = 0
 		clip_end = len(self.vectors)
 
 		#if restrict_vocab:
@@ -108,29 +110,32 @@ class GPT2EmbedAssoc(Assoc):
 		neg = flatten([self.getNormVec(w) for w in neg])
 		
 		# add weights for each key; default to 1.0 for positive and -1.0 for negative keys
-		positive = [(item, 1.0) for item in pos]
-		negative = [(item, -1.0) for item in neg]
+		positive = [(*item, 1.0) for item in pos]
+		negative = [(*item, -1.0) for item in neg]
 
 		# compute the weighted average of all keys
 		all_keys, mean = set(), []
-		for key, weight in positive + negative:
+		for key, tok, weight in positive + negative:
 			mean.append(weight * key)
-			#if self.has_index_for(key): WORKING
-			#	all_keys.add(self.get_index(key)) WORKING
+			#if self.has_index_for(key):
+			all_keys.add(tok)
 		if not mean:
 			raise ValueError("cannot compute similarity with no input")
-		mean = gensim.matutils.unitvec(array(mean).mean(axis=0)).astype(REAL)
+		mean = gensim.matutils.unitvec(np.array(mean, dtype=object).mean(axis=0)).astype(np.float32)
 		
-		return #WORKING
-
-		dists = dot(self.vectors[clip_start:clip_end], mean) / self.norms[clip_start:clip_end]
-		if not topn:
-			return dists
-		best = gensim.matutils.argsort(dists, topn=topn + len(all_keys), reverse=True)
+		# ｡･:*:･ﾟ★,｡･:*:･ﾟ☆
+		dists = np.dot(self.vectors[:clip_end], mean) / self.norms[:clip_end]
+		# ｡･:*:･ﾟ★,｡･:*:･ﾟ☆
+		
+		#if not topn:
+		#	return dists
+		
+		best = gensim.matutils.argsort(dists, topn = topn + len(all_keys), reverse=True)
+	
 		# ignore (don't return) keys from the input
 		result = [
-			(self.index_to_key[sim + clip_start], float(dists[sim]))
-			for sim in best if (sim + clip_start) not in all_keys
+			(self.tokenizer.decode(sim), float(dists[sim]))
+			for sim in best if sim not in all_keys
 		]
 		return result[:topn]
 
@@ -353,7 +358,7 @@ if __name__ == "__main__":
 	neg = board['R'] + board['A']
 	
 	g = GPT2EmbedAssoc()
-	g.getAssocs(pos, neg, 10)
+	assoc = g.getAssocs(pos, neg, 10)
 	
 	'''
 	m = Spymaster(W2VAssoc())
