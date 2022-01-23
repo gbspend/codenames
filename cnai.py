@@ -5,7 +5,7 @@ from collections import defaultdict
 from itertools import chain, combinations
 from random import randrange
 from sentence_transformers import util
-from transformers import GPT2Model, GPT2Tokenizer
+from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer
 
 #=HELPERS===================================
 
@@ -16,6 +16,10 @@ def powerset(iterable, rng=range(2,5)):
 #checks for valid hints: one word only, no acronyms, all alphabetical chars
 def isValid(word):
 	return '_' not in word and not word.isupper() and word.isalpha()
+
+#list of lists into one list
+def flatten(t):
+    return [item for sublist in t for item in sublist]
 
 def w2vPreprocess(model, w):
 	try:
@@ -33,6 +37,7 @@ def GPT2Preprocess(w):
 	return w.replace("_", " ")
 
 # ｡･:*:･ﾟ★,｡･:*:･ﾟ☆
+#lm is GPT2LMHeadModel, embed is embedding numpyarray
 def embed2Tok(lm, embed):
 	embed = torch.from_numpy(embed)
 	head = lm.lm_head
@@ -76,12 +81,59 @@ class GPT2EmbedAssoc(Assoc):
 	def __init__(self):
 		super().__init__()
 		self.lm = GPT2LMHeadModel.from_pretrained("gpt2")
+		self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+		self.vectors = self.lm.get_input_embeddings().weight.data.numpy() #nparray of ebmedding space
+		self.norms = np.linalg.norm(self.vectors, axis=1)
 	
 	def preprocess(self,w):
 		return GPT2Preprocess(self.lm, w)
 	
-	def getAssocs(self, pos, neg):
-		pass #TODO
+	#gets a normalized embedding vector for word w
+	def getNormVec(self,w):
+		ids = torch.squeeze(self.tokenizer.encode(w, return_tensors='pt'))
+		embed = self.vectors[ids]
+		norm = np.linalg.norm(embed)
+		return embed/norm
+	
+	#takes list of pos embeddings and list of neg embeddings and returns topn most similar embeddings
+	#	alg from most_similar in RaRe-Technologies/gensim/gensim/models/keyedvectors.py line 703
+	def getAssocs(self, pos, neg, topn):
+		clip_start = 0
+		clip_end = len(self.vectors)
+
+		#if restrict_vocab:
+		#	clip_end = restrict_vocab
+
+		pos = flatten([self.getNormVec(w) for w in pos]) # word -> [norm_embeds]; [words] -> [[norm_embeds]] --flatten--> [norm_embeds]
+		neg = flatten([self.getNormVec(w) for w in neg])
+		
+		# add weights for each key; default to 1.0 for positive and -1.0 for negative keys
+		positive = [(item, 1.0) for item in pos]
+		negative = [(item, -1.0) for item in neg]
+
+		# compute the weighted average of all keys
+		all_keys, mean = set(), []
+		for key, weight in positive + negative:
+			mean.append(weight * key)
+			#if self.has_index_for(key): WORKING
+			#	all_keys.add(self.get_index(key)) WORKING
+		if not mean:
+			raise ValueError("cannot compute similarity with no input")
+		mean = gensim.matutils.unitvec(array(mean).mean(axis=0)).astype(REAL)
+		
+		return #WORKING
+
+		dists = dot(self.vectors[clip_start:clip_end], mean) / self.norms[clip_start:clip_end]
+		if not topn:
+			return dists
+		best = gensim.matutils.argsort(dists, topn=topn + len(all_keys), reverse=True)
+		# ignore (don't return) keys from the input
+		result = [
+			(self.index_to_key[sim + clip_start], float(dists[sim]))
+			for sim in best if (sim + clip_start) not in all_keys
+		]
+		return result[:topn]
+
 
 #make sure all the codenames words are in GPT2 (check with Tokenizer)
 #class GPT2PromptAssoc(Assoc):
@@ -296,6 +348,14 @@ if __name__ == "__main__":
 		'N': ["giant", "nail", "dragon", "stadium", "flute", "carrot", "wake"],
 		'A': ['doctor']
 	}
+	
+	pos = board['U']
+	neg = board['R'] + board['A']
+	
+	g = GPT2EmbedAssoc()
+	g.getAssocs(pos, neg, 10)
+	
+	'''
 	m = Spymaster(W2VAssoc())
 	hint = m.makeHint(board, True)
 	gg = GPT2EmbedGuesser()
@@ -306,6 +366,7 @@ if __name__ == "__main__":
 	gg.newHint(hint)
 	choices = sum(board.values(), [])
 	print(gg.nextGuess(choices))
+	'''
 
 #
 
