@@ -134,7 +134,7 @@ class GPT2EmbedAssoc(Assoc):
 	
 		# ignore (don't return) keys from the input
 		result = [
-			(self.tokenizer.decode(sim), float(dists[sim]))
+			(self.tokenizer.decode(sim.item()), float(dists[sim.item()]))
 			for sim in best if sim not in all_keys
 		]
 		return result[:topn]
