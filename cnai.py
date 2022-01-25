@@ -3,11 +3,37 @@ import numpy as np
 import torch
 from collections import defaultdict
 from itertools import chain, combinations
+from nltk.corpus import words
 from random import randrange
 from sentence_transformers import util
 from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer
 
 #=HELPERS===================================
+
+all_words = words.words()
+
+#converts (parts,prob) into (longest_str,mean_prob)
+#	parts are the vocab equiv of a token (likely not a whole word), e.g. 'amb' for 4131
+#	assumes words appear sequentially (i.e. not trying all combos @_@)
+def dists2words(dists):
+	parts,probs = zip(*dists)
+	ret = []
+	i = 0
+	while i < len(parts):
+		j = i+1
+		longest = None
+		mean_prob = -1 #avg prob of all parts in the longest word
+		while j < len(parts):
+			curr = ''.join(parts[i:j])
+			print(curr,curr in all_words)
+			if curr in  all_words:
+				longest = curr #just keep longest
+				mean_prob = sum(probs[i:j])/(j-i)
+			j+=1
+		if longest is not None:
+			ret.append((longest, mean_prob))
+		i+=1
+	return ret
 
 def powerset(iterable, rng=range(2,5)):
 	s = list(iterable)
