@@ -17,7 +17,7 @@ all_words = set(words.words())
 #	assumes words appear sequentially (i.e. not trying all combos @_@)
 def dists2words(dists):
 	parts,probs = zip(*dists)
-	print(len(parts))
+	#print(len(parts))
 	ret = []
 	i = 0
 	while i < len(parts):
@@ -355,9 +355,14 @@ class Spymaster:
 			pow_set = powerset(pos)
 		for combo in pow_set:
 			curr = self.assoc.getAssocs(list(combo),neg, 10)
+			
+			any_added = False #DEBUG
 			for hint,sim in curr:
 				if isValid(hint, board_words):
 					combos[combo].addOption(hint, sim)
+					any_added = True
+			if not any_added:
+				print("NONE ADDED:", [hint for hint,sim in curr])
 		
 		max_avg_sim = -9999
 		max_combo = None
