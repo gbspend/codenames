@@ -85,7 +85,7 @@ class Assoc:
 	
 	#returns a list of potential associations with a confidence/prob for each
 	#abstract function
-	def getAssocs(self, pos, neg):
+	def getAssocs(self, pos, neg, topn):
 		raise NotImplementedError
 	
 	#preprocess word before getting embedding (e.g. w2v checks capitalization, gpt converts _ to space)
@@ -97,10 +97,11 @@ class W2VAssoc(Assoc):
 		super().__init__()
 		self.model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True, limit=500000)
 	
-	def getAssocs(self, pos, neg):
+	def getAssocs(self, pos, neg, topn):
 		return self.model.most_similar(
 			positive=pos,
 			negative=neg,
+			topn=topn,
 			restrict_vocab=50000
 		)
 	
@@ -130,7 +131,7 @@ class GPT2EmbedAssoc(Assoc):
 	
 	#takes list of pos words and list of neg words and returns topn most similar words
 	#	alg from most_similar in RaRe-Technologies/gensim/gensim/models/keyedvectors.py line 703
-	def getAssocs(self, pos, neg):
+	def getAssocs(self, pos, neg, topn):
 		clip_end = len(self.vectors)
 
 		#if restrict_vocab:
@@ -161,7 +162,8 @@ class GPT2EmbedAssoc(Assoc):
 		#if not topn:
 		#	return dists
 		
-		best = gensim.matutils.argsort(dists, reverse=True)
+		# times 5 because: a) may include board words, and b) tok < word
+		best = gensim.matutils.argsort(dists, reverse=True)[:topn*5]
 	
 		'''
 		# I don't like this because it could eliminate a *tok* that's
@@ -352,7 +354,7 @@ class Spymaster:
 		else:
 			pow_set = powerset(pos)
 		for combo in pow_set:
-			curr = self.assoc.getAssocs(list(combo),neg)
+			curr = self.assoc.getAssocs(list(combo),neg, 10)
 			for hint,sim in curr:
 				if isValid(hint, board_words):
 					combos[combo].addOption(hint, sim)
