@@ -17,7 +17,8 @@ all_words = set(words.words())
 #	assumes words appear sequentially (i.e. not trying all combos @_@)
 def dists2words(dists):
 	parts,probs = zip(*dists)
-	#print(len(parts))
+	parts = [p.strip() for p in parts]
+	#print(parts)
 	ret = []
 	i = 0
 	while i < len(parts):
