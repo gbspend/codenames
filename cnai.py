@@ -124,7 +124,7 @@ class GPT2EmbedAssoc(Assoc):
 			ret.append((embed/norm,i))
 		return ret
 	
-	#takes list of pos embeddings and list of neg embeddings and returns topn most similar embeddings
+	#takes list of pos words and list of neg words and returns topn most similar words
 	#	alg from most_similar in RaRe-Technologies/gensim/gensim/models/keyedvectors.py line 703
 	def getAssocs(self, pos, neg, topn):
 		clip_end = len(self.vectors)
@@ -132,7 +132,8 @@ class GPT2EmbedAssoc(Assoc):
 		#if restrict_vocab:
 		#	clip_end = restrict_vocab
 
-		pos = flatten([self.getNormVec(w) for w in pos]) # word -> [norm_embeds]; [words] -> [[norm_embeds]] --flatten--> [norm_embeds]
+		# word -> [norm_embeds]; [words] -> [[norm_embeds]] --flatten--> [norm_embeds]
+		pos = flatten([self.getNormVec(w) for w in pos])
 		neg = flatten([self.getNormVec(w) for w in neg])
 		
 		# add weights for each key; default to 1.0 for positive and -1.0 for negative keys
@@ -158,12 +159,24 @@ class GPT2EmbedAssoc(Assoc):
 		
 		best = gensim.matutils.argsort(dists, topn = topn + len(all_keys), reverse=True)
 	
+		'''
+		# I don't like this because it could eliminate a *tok* that's
+		#		in the input but that could be used to make a different word
+		#		hinter can just filter out board words post hoc
 		# ignore (don't return) keys from the input
-		result = [
+		parts_with_probs = [
 			(self.tokenizer.decode(sim.item()), float(dists[sim.item()]))
 			for sim in best if sim not in all_keys
 		]
-		return result[:topn]
+		'''
+		
+		parts_with_probs = [
+			(self.tokenizer.decode(sim.item()), float(dists[sim.item()]))
+			for sim in best
+		]
+		
+		final_words = dists2words(parts_with_probs)
+		return final_words
 
 
 #make sure all the codenames words are in GPT2 (check with Tokenizer)
@@ -384,7 +397,9 @@ if __name__ == "__main__":
 	neg = board['R'] + board['A']
 	
 	g = GPT2EmbedAssoc()
-	assoc = g.getAssocs(pos, neg, 10)
+	assocs = g.getAssocs(pos, neg, 10)
+	for word,prob in assocs:
+		print(word, "%.4f" % prob)
 	
 	'''
 	m = Spymaster(W2VAssoc())
