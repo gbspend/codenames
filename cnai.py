@@ -25,7 +25,7 @@ def dists2words(dists):
 		mean_prob = -1 #avg prob of all parts in the longest word
 		while j < len(parts):
 			curr = ''.join(parts[i:j])
-			print(curr,curr in all_words)
+			#print(curr,curr in all_words)
 			if curr in  all_words:
 				longest = curr #just keep longest
 				mean_prob = sum(probs[i:j])/(j-i)
@@ -39,8 +39,11 @@ def powerset(iterable, rng=range(2,5)):
 	s = list(iterable)
 	return chain.from_iterable(combinations(s, r) for r in rng)
 
-#checks for valid hints: one word only, no acronyms, all alphabetical chars
-def isValid(word):
+#checks for valid hints:
+#	not on board, one word only, no acronyms, all alphabetical chars
+def isValid(word, board_words):
+	if word in board_words:
+		return False
 	return '_' not in word and not word.isupper() and word.isalpha()
 
 #list of lists into one list
@@ -324,6 +327,7 @@ class Spymaster:
 	#returns (hint, number) tuple
 	#IDEA: if there are only 3-4 words left, lean more toward hail marys
 	def makeHint(self, board, blue):
+		board_words = set([item for sublist in list(board.values()) for item in sublist])
 		neg = board['N'] + board['A'] + (board['R'] if blue else board['U'])
 		pos = board['U'] if blue else board['R']
 		
@@ -349,7 +353,7 @@ class Spymaster:
 		for combo in pow_set:
 			curr = self.assoc.getAssocs(list(combo),neg)
 			for hint,sim in curr:
-				if isValid(hint):
+				if isValid(hint, board_words):
 					combos[combo].addOption(hint, sim)
 		
 		max_avg_sim = -9999
