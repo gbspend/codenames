@@ -10,13 +10,14 @@ from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer
 
 #=HELPERS===================================
 
-all_words = words.words()
+all_words = set(words.words())
 
 #converts (parts,prob) into (longest_str,mean_prob)
 #	parts are the vocab equiv of a token (likely not a whole word), e.g. 'amb' for 4131
 #	assumes words appear sequentially (i.e. not trying all combos @_@)
 def dists2words(dists):
 	parts,probs = zip(*dists)
+	print(len(parts))
 	ret = []
 	i = 0
 	while i < len(parts):
