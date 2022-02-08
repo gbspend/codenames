@@ -163,14 +163,20 @@ def testCheatVsW2V(n):
 	return game.play()
 
 #play 1 game of cheater-n (U) vs W2V hinter + GPT2Embed guesser (R)
-def testCheatVsW2VGPT(n, assas=True):
+def testCheatVsW2VGPTE(n, assas=True):
 	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Spymaster(cnai.W2VAssoc()), cnai.GPT2EmbedGuesser())
+	game.count_assassin = assas
+	return game.play()
+
+#play 1 game of cheater-n (U) vs GPT2Embed hinter + GPT2Embed guesser (R)
+def testCheatVsGPTEGPTE(n, assas=True):
+	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Spymaster(cnai.GPT2EmbedAssoc()), cnai.GPT2EmbedGuesser())
 	game.count_assassin = assas
 	return game.play()
 			
 if __name__ == "__main__":	
 	for i in range(10):
-		winner, hist = testCheatVsW2VGPT(1,False)
+		winner, hist = testCheatVsGPTEGPTE(1,False)
 		print(i, "Blue won..." if winner else "RED WON!")
 		if not winner:
 			pprintHist(hist)
