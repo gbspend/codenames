@@ -129,7 +129,7 @@ class GPT2EmbedAssoc(Assoc):
 	
 	#takes list of pos words and list of neg words and returns topn most similar words
 	#	alg from most_similar in RaRe-Technologies/gensim/gensim/models/keyedvectors.py line 703
-	def getAssocs(self, pos, neg, topn):
+	def getAssocs(self, pos, neg):
 		clip_end = len(self.vectors)
 
 		#if restrict_vocab:
@@ -160,7 +160,7 @@ class GPT2EmbedAssoc(Assoc):
 		#if not topn:
 		#	return dists
 		
-		best = gensim.matutils.argsort(dists, topn = topn + len(all_keys), reverse=True)
+		best = gensim.matutils.argsort(dists, reverse=True)
 	
 		'''
 		# I don't like this because it could eliminate a *tok* that's
