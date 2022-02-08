@@ -400,23 +400,22 @@ if __name__ == "__main__":
 	pos = board['U']
 	neg = board['R'] + board['A']
 	
+	'''
 	g = GPT2EmbedAssoc()
 	assocs = g.getAssocs(pos, neg, 10)
 	for word,prob in assocs:
 		print(word, "%.4f" % prob)
-	
 	'''
-	m = Spymaster(W2VAssoc())
+	
+	m = Spymaster(GPT2EmbedAssoc())
 	hint = m.makeHint(board, True)
+	
+	print(hint)
+	
 	gg = GPT2EmbedGuesser()
-	
-	test = gg.getSimilarity("dog","cat")
-	print(test, type(test))
-	
 	gg.newHint(hint)
 	choices = sum(board.values(), [])
 	print(gg.nextGuess(choices))
-	'''
 
 #
 
