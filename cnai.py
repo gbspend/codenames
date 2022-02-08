@@ -62,7 +62,7 @@ def w2vPreprocess(model, w):
 #	>>> print(tokenizer.encode("New York", return_tensors='pt'))
 #	tensor([[3605,  331,  967]])
 #	tensor([[3791, 1971]])
-def GPT2Preprocess(w):
+def GPT2Preprocess(model, w):
 	return w.replace("_", " ")
 
 # ｡･:*:･ﾟ★,｡･:*:･ﾟ☆
@@ -297,7 +297,7 @@ class GPT2EmbedGuesser(Guesser):
 		return float(np.mean(squozen))
 		
 	def preprocess(self, w):
-		return GPT2Preprocess(w)
+		return GPT2Preprocess(self.model, w)
 	
 #class GPT2PromptGuesser(Guesser):
 
