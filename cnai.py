@@ -12,6 +12,31 @@ from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer
 
 all_words = set(words.words())
 
+#Singleton Models
+w2v_model = None
+def getW2vModel():
+	if not w2v_model:
+		w2v_model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True, limit=500000)
+	return w2v_model
+
+gpt_model = None
+def getGptModel():
+	if not gpt_model:
+		gpt_model = GPT2Model.from_pretrained("gpt2")
+	return gpt_model
+
+gpt_lm = None
+def getGptLM():
+	if not gpt_lm:
+		gpt_lm = GPT2LMHeadModel.from_pretrained("gpt2")
+	return gpt_lm
+
+gpt_tok = None
+def getGptTok():
+	if not gpt_tok:
+		gpt_tok = GPT2Tokenizer.from_pretrained("gpt2")
+	return gpt_tok
+
 #converts (parts,prob) into (longest_str,mean_prob)
 #	parts are the vocab equiv of a token (likely not a whole word), e.g. 'amb' for 4131
 #	assumes words appear sequentially (i.e. not trying all combos @_@)
@@ -96,7 +121,7 @@ class Assoc:
 class W2VAssoc(Assoc):
 	def __init__(self):
 		super().__init__()
-		self.model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True, limit=500000)
+		self.model = getW2vModel()
 	
 	def getAssocs(self, pos, neg, topn):
 		return self.model.most_similar(
@@ -112,8 +137,8 @@ class W2VAssoc(Assoc):
 class GPT2EmbedAssoc(Assoc):
 	def __init__(self):
 		super().__init__()
-		self.lm = GPT2LMHeadModel.from_pretrained("gpt2")
-		self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+		self.lm = getGptLM() #GPT2LMHeadModel.from_pretrained("gpt2")
+		self.tokenizer = getGptTok() # GPT2Tokenizer.from_pretrained("gpt2")
 		self.vectors = self.lm.get_input_embeddings().weight.data.numpy() #nparray of ebmedding space
 		self.norms = np.linalg.norm(self.vectors, axis=1)
 	
@@ -256,7 +281,7 @@ class CheatGuesser(Guesser):
 class W2VGuesser(Guesser):
 	def __init__(self):
 		super().__init__()
-		self.model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True, limit=500000)
+		self.model = getW2vModel()
 	
 	def getSimilarity(self, a, b): 
 		return self.model.similarity(a, b)
@@ -269,8 +294,8 @@ class W2VGuesser(Guesser):
 class GPT2EmbedGuesser(Guesser):
 	def __init__(self):
 		super().__init__()
-		self.model = GPT2Model.from_pretrained("gpt2")
-		self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+		self.model = getGptModel() #GPT2Model.from_pretrained("gpt2")
+		self.tokenizer = getGptTok() #GPT2Tokenizer.from_pretrained("gpt2")
 	
 	def getSimilarity(self, a, b):
 		#tokenizer may result in len > 1, even for single word
