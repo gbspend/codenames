@@ -15,24 +15,28 @@ all_words = set(words.words())
 #Singleton Models
 w2v_model = None
 def getW2vModel():
+	global w2v_model
 	if not w2v_model:
 		w2v_model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True, limit=500000)
 	return w2v_model
 
 gpt_model = None
 def getGptModel():
+	global gpt_model
 	if not gpt_model:
 		gpt_model = GPT2Model.from_pretrained("gpt2")
 	return gpt_model
 
 gpt_lm = None
 def getGptLM():
+	global gpt_lm
 	if not gpt_lm:
 		gpt_lm = GPT2LMHeadModel.from_pretrained("gpt2")
 	return gpt_lm
 
 gpt_tok = None
 def getGptTok():
+	global gpt_tok
 	if not gpt_tok:
 		gpt_tok = GPT2Tokenizer.from_pretrained("gpt2")
 	return gpt_tok
