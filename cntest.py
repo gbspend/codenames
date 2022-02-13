@@ -28,7 +28,15 @@ def testCheatVsGPTEGPTE(n, assas=True):
 	game = cngame.Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Spymaster(cnai.GPT2EmbedAssoc()), cnai.GPT2EmbedGuesser())
 	game.count_assassin = assas
 	return game.play()
-			
+
+#test GPT2PromptAssoc with the provided prompt with/against other provided AI
+#	prompt=None for default
+#	testPrompt(cnai.Cheatmaster(), cnai.CheatGuesser(1),PROMPT,cnai.GPT2EmbedGuesser(),False)
+def testPrompt(blue_hint, blue_guess, red_prompt, red_guess, assas=True):
+	game = cngame.Codenames(blue_hint,blue_guess, cnai.Spymaster(cnai.GPT2PromptAssoc(red_prompt)), red_guess)
+	game.count_assassin = assas
+	return game.play()
+
 if __name__ == "__main__":	
 	sanity_test()
 	testcheatw2v()

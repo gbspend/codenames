@@ -1,12 +1,13 @@
 import gensim
 import numpy as np
+from re import sub
 import torch
 from collections import defaultdict
 from itertools import chain, combinations
 from nltk.corpus import words
 from random import randrange
 from sentence_transformers import util
-from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer
+from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer, pipeline
 
 #=HELPERS===================================
 
@@ -40,6 +41,14 @@ def getGptTok():
 	if not gpt_tok:
 		gpt_tok = GPT2Tokenizer.from_pretrained("gpt2")
 	return gpt_tok
+
+gen_pipe = None
+def getGenPipe():
+	global gen_pipe
+	if not gen_pipe:
+		gen_pipe = pipeline("text-generation")
+		gen_pipe.model.config.max_length=100
+	return gen_pipe
 #------------------------------------
 
 #converts (parts,prob) into (longest_str,mean_prob)
@@ -215,9 +224,42 @@ class GPT2EmbedAssoc(Assoc):
 		final_words = dists2words(parts_with_probs)
 		return final_words
 
+default_prompt = '''These words are related to ambulance: paramedic, emergency, doctor.
+These words are related to boat: water, fish, captain.
+These words are related to PROMPT: '''
 
-#make sure all the codenames words are in GPT2 (check with Tokenizer)
-#class GPT2PromptAssoc(Assoc):
+class GPT2PromptAssoc(Assoc):
+	def __init__(self, prompt=None):
+		super().__init__()
+		self.pipe = getGenPipe()
+		if not prompt:
+			self.base_prompt = default_prompt
+		else:
+			self.base_prompt = prompt
+	
+	def preprocess(self,w):
+		return GPT2Preprocess(self.pipe.model, w)
+		
+	#TODO:
+	def testAssoc(self,prompt):
+		raw = self.pipe(self.prompt)[0]['generated_text']
+		output = raw[len(self.prompt):]
+		newi = output.find('\n')
+		if newi > 0:
+			output = output[:newi]
+		parts = [s.strip() for s in output.split(",")]
+		parts = [sub(r'[^\w\s]', '', p) for p in parts if p]
+		return parts
+	
+	#takes list of pos words and list of neg words and returns topn most similar words
+	def getAssocs(self, pos, neg, topn):
+		#TODO:
+		ret = set()
+		for w in pos:
+			prompt = self.base_prompt.replace("PROMPT",w)
+			ret.update(self.testAssoc(prompt))
+		#TODO: check if probs should sum to 1 (i.e. check what gensim does in W2V above)
+		return [(w,0.5) for w in ret]
 
 #=GUESSER===================================
 
