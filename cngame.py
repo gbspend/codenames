@@ -184,7 +184,8 @@ if __name__ == "__main__":
 	
 #
 
-
+#TODO: test harness for a GPT2Prompt spymaster given an arbitrary prompt :)
+#	for completeness, test that 'master with all (both?) guessers
 
 
 
