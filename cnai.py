@@ -7,7 +7,8 @@ from itertools import chain, combinations
 from nltk.corpus import words
 from random import randrange
 from sentence_transformers import util
-from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer, pipeline
+from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer, logging, pipeline
+logging.set_verbosity_error()
 
 #=HELPERS===================================
 
@@ -242,8 +243,8 @@ class GPT2PromptAssoc(Assoc):
 		
 	#TODO:
 	def testAssoc(self,prompt):
-		raw = self.pipe(self.prompt)[0]['generated_text']
-		output = raw[len(self.prompt):]
+		raw = self.pipe(prompt)[0]['generated_text']
+		output = raw[len(prompt):]
 		newi = output.find('\n')
 		if newi > 0:
 			output = output[:newi]
@@ -257,7 +258,10 @@ class GPT2PromptAssoc(Assoc):
 		ret = set()
 		for w in pos:
 			prompt = self.base_prompt.replace("PROMPT",w)
-			ret.update(self.testAssoc(prompt))
+			print("DEBUG prompt:",prompt)
+			assocs = self.testAssoc(prompt)
+			print(assocs,"\n")
+			ret.update(assocs) #TODO: make sure these are valid!
 		#Verified that w2v similarity probs don't sum to 1
 		return [(w,0.5) for w in ret] #Be careful with these probs! They will likely overshadow real words!
 
