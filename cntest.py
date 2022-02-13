@@ -37,7 +37,10 @@ def testPrompt(blue_hint, blue_guess, red_prompt, red_guess, assas=True):
 	game.count_assassin = assas
 	return game.play()
 
-if __name__ == "__main__":	
+if __name__ == "__main__":
+	testPrompt(cnai.Cheatmaster(), cnai.CheatGuesser(1), None, cnai.GPT2EmbedGuesser(), False)
+	exit(0)
+	
 	sanity_test()
 	testcheatw2v()
 	testCheatVsW2V(2)

@@ -258,8 +258,8 @@ class GPT2PromptAssoc(Assoc):
 		for w in pos:
 			prompt = self.base_prompt.replace("PROMPT",w)
 			ret.update(self.testAssoc(prompt))
-		#TODO: check if probs should sum to 1 (i.e. check what gensim does in W2V above)
-		return [(w,0.5) for w in ret]
+		#Verified that w2v similarity probs don't sum to 1
+		return [(w,0.5) for w in ret] #Be careful with these probs! They will likely overshadow real words!
 
 #=GUESSER===================================
 
