@@ -47,7 +47,7 @@ def newGame(blueFirst=True):
 	
 	return spaces,selected
 
-#TODO?: make it smart so it can handle 1p or 2p?
+#TODO: add support for human player(s)
 #probably need to reimplement to add human players (async?)
 class Codenames:
 	def __init__(self, us, ug, rs, rg):
@@ -146,47 +146,6 @@ def pprintHist(hist):
 				tabs = 2
 			print("\t"*tabs,h)
 	
-def sanity_test():
-	blueShouldWin = bool(randint(0,1))
-	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(2 if blueShouldWin else 1), cnai.Cheatmaster(), cnai.CheatGuesser(1 if blueShouldWin else 2))
-	blueWon, dummy = game.play()
-	assert blueShouldWin == blueWon
-
-#tests whether w2v can win with a terrible hint (CHEAT) each time against cheater-n
-def testcheatw2v(n = 1):
-	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Cheatmaster(), cnai.W2VGuesser())
-	return game.play()
-
-#play 1 game of cheater-n (U) vs W2V hinter/guesser (R)
-def testCheatVsW2V(n):
-	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Spymaster(cnai.W2VAssoc()), cnai.W2VGuesser())
-	return game.play()
-
-#play 1 game of cheater-n (U) vs W2V hinter + GPT2Embed guesser (R)
-def testCheatVsW2VGPTE(n, assas=True):
-	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Spymaster(cnai.W2VAssoc()), cnai.GPT2EmbedGuesser())
-	game.count_assassin = assas
-	return game.play()
-
-#play 1 game of cheater-n (U) vs GPT2Embed hinter + GPT2Embed guesser (R)
-def testCheatVsGPTEGPTE(n, assas=True):
-	game = Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Spymaster(cnai.GPT2EmbedAssoc()), cnai.GPT2EmbedGuesser())
-	game.count_assassin = assas
-	return game.play()
-			
-if __name__ == "__main__":	
-	for i in range(10):
-		winner, hist = testCheatVsGPTEGPTE(1,False)
-		print(i, "Blue won..." if winner else "RED WON!")
-		if not winner:
-			pprintHist(hist)
-			print()
-	
-#
-
-#TODO: test harness for a GPT2Prompt spymaster given an arbitrary prompt :)
-#	for completeness, test that 'master with all (both?) guessers
-
 
 
 

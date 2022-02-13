@@ -12,7 +12,7 @@ from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer
 
 all_words = set(words.words())
 
-#Singleton Models
+#-Model Singletons-------------------
 w2v_model = None
 def getW2vModel():
 	global w2v_model
@@ -40,6 +40,7 @@ def getGptTok():
 	if not gpt_tok:
 		gpt_tok = GPT2Tokenizer.from_pretrained("gpt2")
 	return gpt_tok
+#------------------------------------
 
 #converts (parts,prob) into (longest_str,mean_prob)
 #	parts are the vocab equiv of a token (likely not a whole word), e.g. 'amb' for 4131
