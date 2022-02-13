@@ -1,4 +1,5 @@
 import cnai, cngame
+from random import randint
 
 def sanity_test():
 	blueShouldWin = bool(randint(0,1))
@@ -29,6 +30,13 @@ def testCheatVsGPTEGPTE(n, assas=True):
 	return game.play()
 			
 if __name__ == "__main__":	
+	sanity_test()
+	testcheatw2v()
+	testCheatVsW2V(2)
+	testCheatVsW2VGPTE(1,False)
+	testCheatVsGPTEGPTE(1)
+	exit(0)
+
 	for i in range(10):
 		winner, hist = testCheatVsGPTEGPTE(1,False)
 		print(i, "Blue won..." if winner else "RED WON!")
