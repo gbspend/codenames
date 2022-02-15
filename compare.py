@@ -5,7 +5,7 @@ import cnai
 import cngame
 import json
 import os
-from itertools import combinations_with_replacement
+from itertools import combinations
 
 #if fname exists, rename to [fname].bak
 def backup(fname):
@@ -47,11 +47,11 @@ if __name__ == '__main__':
 	team_names = teams.keys()
 	
 	#for each team pairing, play 10(?) games, write total cumulative results to disk, repeat
-	combos = combinations_with_replacement(team_names,2)
+	combos = combinations(team_names,2)
 	
 	#dict: for each key, for each key store [win,loss]
-	results = {key : {sub : [0,0] for sub in team_names} for key in team_names}
-	n_games = 2 #10
+	results = {key : {sub : [0,0] for sub in team_names if sub != key} for key in team_names}
+	n_games = 10
 	fname = "results.json"
 	
 	#while True:
@@ -59,6 +59,8 @@ if __name__ == '__main__':
 		blue_n,red_n = combo
 		params = [*teams[blue_n],*teams[red_n]]
 		
+		print(blue_n,'vs',red_n)
+
 		for i in range(n_games):
 			game = cngame.Codenames(*params)
 			blue_won,hist = game.play()

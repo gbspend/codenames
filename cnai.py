@@ -139,6 +139,7 @@ class W2VAssoc(Assoc):
 		self.model = getW2vModel()
 	
 	def getAssocs(self, pos, neg, topn):
+		#print("W2V",pos,neg)
 		return self.model.most_similar(
 			positive=pos,
 			negative=neg,
@@ -233,6 +234,7 @@ class GPT2PromptAssoc(Assoc):
 	def __init__(self, prompt=None):
 		super().__init__()
 		self.pipe = getGenPipe()
+		self.cache = {} #temp?(?)
 		if not prompt:
 			self.base_prompt = default_prompt
 		else:
@@ -243,6 +245,8 @@ class GPT2PromptAssoc(Assoc):
 		
 	#TODO:
 	def testAssoc(self,prompt):
+		if prompt in self.cache:
+			return self.cache[prompt]
 		raw = self.pipe(prompt)[0]['generated_text']
 		output = raw[len(prompt):]
 		newi = output.find('\n')
@@ -250,6 +254,7 @@ class GPT2PromptAssoc(Assoc):
 			output = output[:newi]
 		parts = [s.strip() for s in output.split(",")]
 		parts = [sub(r'[^\w\s]', '', p) for p in parts if p]
+		self.cache[prompt] = parts
 		return parts
 	
 	#takes list of pos words and list of neg words and returns topn most similar words
@@ -415,11 +420,6 @@ class Spymaster:
 		neg = [self.assoc.preprocess(w) for w in neg]
 		pos = [self.assoc.preprocess(w) for w in pos]
 		
-		#DEBUG (see bug below):
-		if 'a' in pos or 'a' in neg:
-			print(blue,board,pos,neg)
-			assert False
-
 		#Game AI approach:
 		#1. find combo with highest avg hint similarity (hyp: most likely to be closest related combo)
 		#2. pick the highest-scoring hint for that combo as our hint (# is just len of combo ofc)
@@ -427,7 +427,7 @@ class Spymaster:
 		combos = defaultdict(Spymaster.Combo)
 		
 		if len(pos) == 1: #powerset 2-4 will return []!
-			pow_set = pos
+			pow_set = [tuple(pos)] #needs to be formatted JUST like powerset
 		else:
 			pow_set = powerset(pos)
 		for combo in pow_set:
@@ -439,7 +439,7 @@ class Spymaster:
 					combos[combo].addOption(hint, sim)
 					any_added = True
 			if not any_added:
-				print("NONE ADDED:", [hint for hint,sim in curr])
+				print("NONE ADDED:", combo, [hint for hint,sim in curr])
 		
 		max_avg_sim = -9999
 		max_combo = None
@@ -503,46 +503,6 @@ if __name__ == "__main__":
 	print(gg.nextGuess(choices))
 
 #
-
-'''
-OUTSTANDING BUGS:
-File "cngame.py", line 107, in play
-    guess = guesser.nextGuess(choices) #string from board
-  File "/home/brad/codenames/cnai.py", line 99, in nextGuess
-    s = self.model.similarity(hint, ch)
-KeyError: "Key 'Csa' not present"
-
-Traceback (most recent call last):
-  File "cngame.py", line 171, in <module>
-    winner, hist = testCheatVsW2VGPT(1)
-  File "cngame.py", line 167, in testCheatVsW2VGPT
-    return game.play()
-  File "cngame.py", line 101, in play
-    self.curr_hint = master.makeHint(board, self.bluesTurn) # returns (word,num) tuple
-  File "/home/brad/codenames/cnai.py", line 228, in makeHint
-    curr = self.assoc.getAssocs(list(combo),neg)
-  File "/home/brad/codenames/cnai.py", line 44, in getAssocs
-    return self.model.most_similar(
-  File "/home/brad/.local/lib/python3.8/site-packages/gensim/models/keyedvectors.py", line 773, in most_similar
-    mean.append(weight * self.get_vector(key, norm=True))
-  File "/home/brad/.local/lib/python3.8/site-packages/gensim/models/keyedvectors.py", line 438, in get_vector
-    index = self.get_index(key)
-  File "/home/brad/.local/lib/python3.8/site-packages/gensim/models/keyedvectors.py", line 412, in get_index
-    raise KeyError(f"Key '{key}' not present")
-KeyError: "Key 'a' not present"
-
-Has happened more than once but infrequently: I have a debug if to catch it above...
-??? How "list(combo)" and "neg" are drawn from the board! how did "a" (or "Csa") get in there???
-
-
-
-FIXED
-"TypeError: object of type 'NoneType' has no len()" for len(max_combo) in the return statement of makeHint (for W2V Assoc)
-Happened when RED was trying to make a hint for:
-	{'U': ['death', 'pole'], 'R': ['saturn'], 'N': ['mole', 'root', 'casino', 'cycle', 'bear'], 'A': ['chest']}
-It happens when len(pos) is 1!
-
-'''
 
 
 

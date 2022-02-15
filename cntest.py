@@ -38,7 +38,9 @@ def testPrompt(blue_hint, blue_guess, red_prompt, red_guess, assas=True):
 	return game.play()
 
 if __name__ == "__main__":
-	testPrompt(cnai.Cheatmaster(), cnai.CheatGuesser(1), None, cnai.GPT2EmbedGuesser(), False)
+	blueWon,hist = testPrompt(cnai.Cheatmaster(), cnai.CheatGuesser(1), None, cnai.GPT2EmbedGuesser(), False)
+	print("blue" if blueWon else "RED","won")
+	cngame.pprintHist(hist)
 	exit(0)
 	
 	sanity_test()
