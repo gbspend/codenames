@@ -21,9 +21,9 @@ def backup(fname):
 
 #==================================
 
-#all teams that will be played against each other (excluding cheats bc they don't mix)
-#	(name,hinter_obj,guesser_obj,include) tuple
-#		include is bool: True for everything except cheat teams; means they won't appear on left axis
+#all teams that will be played against each other
+#	dict of name -> (hinter_obj,guesser_obj) tuple
+#	exclude cheats manually later
 def makeTeams():
 	teams = {}
 	
@@ -38,6 +38,9 @@ def makeTeams():
 			tname = hname+"4"+gname
 			teams[tname] = (h,g)
 			#e.g. w2v4gpte "word2vec makes hints FOR gpte"
+	
+	for i in [1,2]:
+		teams["cheat"+str(i)] = (cnai.Cheatmaster(), cnai.CheatGuesser(i))
 
 	return teams
 

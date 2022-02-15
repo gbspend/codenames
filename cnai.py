@@ -276,7 +276,7 @@ class GPT2PromptAssoc(Assoc):
 #Maybe rename/refactor to SimilarityGuesser?
 class Guesser:
 	def __init__(self):
-		self.curr_hint = None
+		self.hints = []
 		self.num_guesses = 0 #increment with each guess, should never get higher than the num in hint[1]
 	
 	def isCheat(self):
@@ -284,13 +284,22 @@ class Guesser:
 	
 	#hint is (word,num) tuple
 	def newHint(self, hint):
-		self.curr_hint = hint
+		self.hints.append(hint)
 		self.num_guesses = 0
 	
 	#returns one of the words from choices as the guess (not board, just list of possible words)
 	#game class will only ask for guesses if the guesser has some left
 	def nextGuess(self, choices):
-		hint = self.preprocess(self.curr_hint[0].lower())
+		hint = None
+		i = len(self.hints)-1
+		while i > 0:
+			temp = self.preprocess(self.hints[-1][0].lower())
+			if self.isKnown(temp):
+				hint = temp
+				break
+			i -= 1
+		if hint is None:
+			return None
 		max_v = -9999
 		max_w = None
 		for ch in choices:
@@ -310,6 +319,10 @@ class Guesser:
 	#preprocess word before getting embedding (e.g. w2v checks capitalization, gpt converts _ to space)
 	def preprocess(self, w):
 		raise NotImplementedError
+	
+	#opportunity for subclass to be picky about which words it knows (looking at you w2v)
+	def isKnown(self, w):
+		return True
 
 #make sure to pair with Cheatmaster, otherwise the num in the hint might be less than self.n
 class CheatGuesser(Guesser):
@@ -346,6 +359,13 @@ class W2VGuesser(Guesser):
 	#kinda hacky, but w2v has New_York but not new_york etc
 	def preprocess(self, w):
 		return w2vPreprocess(self.model, w)
+	
+	def isKnown(self, w):
+		try:
+			self.model.key_to_index[w]
+		except KeyError:
+			return False
+		return True
 		
 class GPT2EmbedGuesser(Guesser):
 	def __init__(self):
@@ -435,6 +455,7 @@ class Spymaster:
 			
 			any_added = False #DEBUG
 			for hint,sim in curr:
+				hint = hint.lower() #something more robust?
 				if isValid(hint, board_words):
 					combos[combo].addOption(hint, sim)
 					any_added = True
