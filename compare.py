@@ -28,7 +28,11 @@ def makeTeams():
 	teams = {}
 	
 	#(name,obj) tuples
-	hinters = [("w2v",cnai.Spymaster(cnai.W2VAssoc())), ("gpte", cnai.Spymaster(cnai.GPT2EmbedAssoc()))]
+	hinters = [
+		("w2v",cnai.Spymaster(cnai.W2VAssoc())),
+		("gpte", cnai.Spymaster(cnai.GPT2EmbedAssoc())),
+		("gptp", cnai.Spymaster(cnai.GPT2PromptAssoc()))
+	]
 	guessers = [("w2v",cnai.W2VGuesser()), ("gpte", cnai.GPT2EmbedGuesser())]
 	
 	for h in hinters:
@@ -52,10 +56,16 @@ if __name__ == '__main__':
 	#for each team pairing, play 10(?) games, write total cumulative results to disk, repeat
 	combos = combinations(team_names,2)
 	
-	#dict: for each key, for each key store [win,loss]
-	results = {key : {sub : [0,0] for sub in team_names if sub != key} for key in team_names}
-	n_games = 10
 	fname = "results.json"
+	results = None
+	if os.path.exists(fname):
+		with open(fname) as fin:
+			results = json.load(fin)
+			print("json loaded")
+	if results is None:
+		#dict: for each key, for each key store [win,loss]
+		results = {key : {sub : [0,0] for sub in team_names if sub != key} for key in team_names}
+	n_games = 10
 	
 	#while True:
 	for combo in combos:
