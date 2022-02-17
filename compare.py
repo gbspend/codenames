@@ -6,6 +6,7 @@ import cngame
 import json
 import os
 from itertools import combinations
+from sys import argv
 
 #if fname exists, rename to [fname].bak
 def backup(fname):
@@ -48,8 +49,11 @@ def makeTeams():
 
 	return teams
 
-# NOTE: This is not for debugging purposes; only records win/loss
 if __name__ == '__main__':
+	repeat = False
+	if len(argv) > 1:
+		repeat = argv == '-r'
+	
 	teams = makeTeams()
 	team_names = teams.keys()
 	
@@ -67,28 +71,30 @@ if __name__ == '__main__':
 		results = {key : {sub : [0,0] for sub in team_names if sub != key} for key in team_names}
 	n_games = 10
 	
-	#while True:
-	for combo in combos:
-		blue_n,red_n = combo
-		params = [*teams[blue_n],*teams[red_n]]
+	while True:
+		for combo in combos:
+			blue_n,red_n = combo
+			params = [*teams[blue_n],*teams[red_n]]
 		
-		print(blue_n,'vs',red_n)
+			print(blue_n,'vs',red_n)
 
-		for i in range(n_games):
-			game = cngame.Codenames(*params)
-			blue_won,hist = game.play()
-			if blue_won:
-				winner = blue_n
-				loser = red_n
-			else:
-				winner = red_n
-				loser = blue_n
-			results[winner][loser][0]+=1
-			results[loser][winner][1]+=1
+			for i in range(n_games):
+				game = cngame.Codenames(*params)
+				blue_won,hist = game.play()
+				if blue_won:
+					winner = blue_n
+					loser = red_n
+				else:
+					winner = red_n
+					loser = blue_n
+				results[winner][loser][0]+=1
+				results[loser][winner][1]+=1
 			
-		backup(fname)
-		with open(fname,'w') as f:
-			json.dump(results, f)
+			backup(fname)
+			with open(fname,'w') as f:
+				json.dump(results, f)
+		if not repeat:
+			break
 #
 
 

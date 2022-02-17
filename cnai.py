@@ -263,9 +263,9 @@ class GPT2PromptAssoc(Assoc):
 		ret = set()
 		for w in pos:
 			prompt = self.base_prompt.replace("PROMPT",w)
-			print("DEBUG prompt:",prompt)
+			#print("DEBUG prompt:",prompt)
 			assocs = self.testAssoc(prompt)
-			print(assocs,"\n")
+			#print(assocs,"\n")
 			ret.update(assocs) #TODO: make sure these are valid!
 		#Verified that w2v similarity probs don't sum to 1
 		return [(w,0.5) for w in ret] #Be careful with these probs! They will likely overshadow real words!
@@ -467,8 +467,8 @@ class Spymaster:
 		
 		 # bc I got "TypeError: object of type 'NoneType' has no len()" for len(max_combo) below???
 		if not combos.keys():
-			print(board,blue,pos,neg)
-			assert False
+			print("NO HINT!",board,blue,pos,neg)
+			return ("None",1)
 		
 		for combo in combos.keys():
 			avg_sim = combos[combo].getAvgSim()
