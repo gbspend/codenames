@@ -91,9 +91,9 @@ if __name__ == '__main__':
 				results[winner][loser][0]+=1
 				results[loser][winner][1]+=1
 			
-			backup(fname)
-			with open(fname,'w') as f:
-				json.dump(results, f)
+		backup(fname)
+		with open(fname,'w') as f:
+			json.dump(results, f)
 		if not repeat:
 			break
 #
