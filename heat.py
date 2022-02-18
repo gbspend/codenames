@@ -24,7 +24,7 @@ with open(fname) as f:
     data = json.load(f)
 
 l = list(data.keys())
-y_names = [name for name in l if 'cheat' not in name]
+y_names = [name for name in l if 'cheat' not in name and 'rand' not in name]
 
 m = np.zeros((len(y_names), len(l)))
 

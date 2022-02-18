@@ -7,6 +7,12 @@ def sanity_test():
 	blueWon, dummy = game.play()
 	assert blueShouldWin == blueWon
 
+def rand_test():
+	blueShouldWin = True
+	game = cngame.Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(2), cnai.Cheatmaster(), cnai.RandomGuesser())
+	blueWon, dummy = game.play()
+	assert blueShouldWin == blueWon
+
 #tests whether w2v can win with a terrible hint (CHEAT) each time against cheater-n
 def testcheatw2v(n = 1):
 	game = cngame.Codenames(cnai.Cheatmaster(), cnai.CheatGuesser(n), cnai.Cheatmaster(), cnai.W2VGuesser())
@@ -43,6 +49,10 @@ These words are related to oil: barrel, gas, crude.
 These words are related to PROMPT: '''
 
 if __name__ == "__main__":
+	for i in range(100):
+		rand_test()
+	exit(0)
+
 	for i in range(3):
 		blueWon,hist = testPrompt(cnai.Cheatmaster(), cnai.CheatGuesser(1), p1, cnai.GPT2EmbedGuesser(), False)
 		print("blue" if blueWon else "RED","won")

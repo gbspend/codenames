@@ -1,11 +1,11 @@
 import gensim
 import numpy as np
-from re import sub
 import torch
 from collections import defaultdict
 from itertools import chain, combinations
 from nltk.corpus import words
-from random import randrange
+from random import choice, randrange
+from re import sub
 from sentence_transformers import util
 from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer, logging, pipeline
 logging.set_verbosity_error()
@@ -268,7 +268,7 @@ class GPT2PromptAssoc(Assoc):
 	
 	#takes list of pos words and list of neg words and returns topn most similar words
 	def getAssocs(self, pos, neg, topn):
-		print("gptp assocs:",pos)
+		#print("gptp assocs:",pos)
 		#TODO:
 		ret = set()
 		for w in pos:
@@ -356,6 +356,13 @@ class CheatGuesser(Guesser):
 			return self.answers.pop()
 		else:
 			return None
+
+class RandomGuesser(Guesser):
+	def __init__(self):
+		super().__init__()
+
+	def nextGuess(self, choices):
+		return choice(choices)
 
 class W2VGuesser(Guesser):
 	def __init__(self):

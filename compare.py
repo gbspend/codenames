@@ -46,6 +46,7 @@ def makeTeams():
 	
 	for i in [1,2]:
 		teams["cheat"+str(i)] = (cnai.Cheatmaster(), cnai.CheatGuesser(i))
+	teams["rand"] = (cnai.Cheatmaster(), cnai.RandomGuesser())
 
 	return teams
 
