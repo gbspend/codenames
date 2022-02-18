@@ -33,14 +33,20 @@ def testCheatVsGPTEGPTE(n, assas=True):
 #	prompt=None for default
 #	testPrompt(cnai.Cheatmaster(), cnai.CheatGuesser(1),PROMPT,cnai.GPT2EmbedGuesser(),False)
 def testPrompt(blue_hint, blue_guess, red_prompt, red_guess, assas=True):
-	game = cngame.Codenames(blue_hint,blue_guess, cnai.Spymaster(cnai.GPT2PromptAssoc(red_prompt)), red_guess)
+	game = cngame.Codenames(blue_hint,blue_guess, cnai.Spymaster(cnai.GPT2PromptAssoc(red_prompt, False)), red_guess)
 	game.count_assassin = assas
 	return game.play()
 
+p1 = '''These words are related to ambulance: paramedic, emergency, doctor.
+These words are related to foot: shoe, sock, race.
+These words are related to oil: barrel, gas, crude.
+These words are related to PROMPT: '''
+
 if __name__ == "__main__":
-	blueWon,hist = testPrompt(cnai.Cheatmaster(), cnai.CheatGuesser(1), None, cnai.GPT2EmbedGuesser(), False)
-	print("blue" if blueWon else "RED","won")
-	cngame.pprintHist(hist)
+	for i in range(3):
+		blueWon,hist = testPrompt(cnai.Cheatmaster(), cnai.CheatGuesser(1), p1, cnai.GPT2EmbedGuesser(), False)
+		print("blue" if blueWon else "RED","won")
+		cngame.pprintHist(hist)
 	exit(0)
 	
 	sanity_test()

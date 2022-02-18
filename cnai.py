@@ -132,6 +132,10 @@ class Assoc:
 	#preprocess word before getting embedding (e.g. w2v checks capitalization, gpt converts _ to space)
 	def preprocess(self, w):
 		raise NotImplementedError
+	
+	#gives subclasses option of clearing cache after each hint gen cycle (balance between cached and not)
+	def clearCache(self):
+		return
 
 class W2VAssoc(Assoc):
 	def __init__(self):
@@ -231,9 +235,10 @@ These words are related to boat: water, fish, captain.
 These words are related to PROMPT: '''
 
 class GPT2PromptAssoc(Assoc):
-	def __init__(self, prompt=None):
+	def __init__(self, prompt=None, perm_cache=True):
 		super().__init__()
 		self.pipe = getGenPipe()
+		self.perm_cache = perm_cache #whether to permanently cache assocs or not
 		self.cache = {} #temp?(?)
 		if not prompt:
 			self.base_prompt = default_prompt
@@ -242,6 +247,10 @@ class GPT2PromptAssoc(Assoc):
 	
 	def preprocess(self,w):
 		return GPT2Preprocess(self.pipe.model, w)
+	
+	def clearCache(self):
+		if not self.perm_cache:
+			self.cache = {}
 		
 	#TODO:
 	def testAssoc(self,prompt):
@@ -259,6 +268,7 @@ class GPT2PromptAssoc(Assoc):
 	
 	#takes list of pos words and list of neg words and returns topn most similar words
 	def getAssocs(self, pos, neg, topn):
+		print("gptp assocs:",pos)
 		#TODO:
 		ret = set()
 		for w in pos:
@@ -443,6 +453,8 @@ class Spymaster:
 		#Game AI approach:
 		#1. find combo with highest avg hint similarity (hyp: most likely to be closest related combo)
 		#2. pick the highest-scoring hint for that combo as our hint (# is just len of combo ofc)
+		
+		self.assoc.clearCache() #each assoc knows how to handle this itself
 		
 		combos = defaultdict(Spymaster.Combo)
 		

@@ -39,7 +39,7 @@ for i,name in enumerate(l):
 mask = np.zeros_like(m)
 mask[np.tril_indices_from(mask)] = True
 
-ax = sb.heatmap(m, mask=mask)
+ax = sb.heatmap(m, mask=mask, cmap="Blues")
 
 plt.draw()
 ax.set_xticklabels(l, rotation = 45)
