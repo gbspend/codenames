@@ -29,7 +29,7 @@ y_names = [name for name in l if 'cheat' not in name and 'rand' not in name]
 m = np.zeros((len(y_names), len(l)))
 
 for i,name in enumerate(l):
-    if 'cheat' in name:
+    if 'cheat' in name or 'rand' in name:
         continue
     for opp in data[name]:
         j = l.index(opp)
