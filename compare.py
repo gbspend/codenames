@@ -52,21 +52,25 @@ def makeTeams():
 
 if __name__ == '__main__':
 	repeat = False
-	if len(argv) > 1:
-		repeat = argv == '-r'
+	if len(argv) > 1 and argv[1] == '-r':
+		repeat = True
+		print("repeating...")
 	
 	teams = makeTeams()
 	team_names = teams.keys()
 	
 	#for each team pairing, play 10(?) games, write total cumulative results to disk, repeat
-	combos = combinations(team_names,2)
+	combos = list(combinations(team_names,2)) #list so it's not a 1-time iterator
 	
 	fname = "results.json"
 	results = None
-	if os.path.exists(fname):
-		with open(fname) as fin:
-			results = json.load(fin)
-			print("json loaded")
+	try:
+		if os.path.exists(fname):
+			with open(fname) as fin:
+				results = json.load(fin)
+				print("json loaded")
+	except: 
+		pass
 	if results is None:
 		#dict: for each key, for each key store [win,loss]
 		results = {key : {sub : [0,0] for sub in team_names if sub != key} for key in team_names}
@@ -90,7 +94,10 @@ if __name__ == '__main__':
 					loser = blue_n
 				results[winner][loser][0]+=1
 				results[loser][winner][1]+=1
-			
+		
+		print()
+		print(results)
+		print()
 		backup(fname)
 		with open(fname,'w') as f:
 			json.dump(results, f)

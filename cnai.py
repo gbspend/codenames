@@ -479,7 +479,7 @@ class Spymaster:
 					combos[combo].addOption(hint, sim)
 					any_added = True
 			if not any_added:
-				print("NONE ADDED:", combo, [hint for hint,sim in curr])
+				pass #print("NONE ADDED:", combo, [hint for hint,sim in curr])
 		
 		max_avg_sim = -9999
 		max_combo = None
