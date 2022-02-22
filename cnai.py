@@ -230,20 +230,32 @@ class GPT2EmbedAssoc(Assoc):
 		final_words = dists2words(parts_with_probs)
 		return final_words
 
-default_prompt = '''These words are related to ambulance: paramedic, emergency, doctor.
+prompt_1pos = '''These words are related to ambulance: paramedic, emergency, doctor.
 These words are related to boat: water, fish, captain.
 These words are related to POS: '''
 
+prompt_2pos = '''This is a list of words related to flag and state: country, government, county.
+This is a list of words related to mammoth and egypt: ancient, large, heavy.
+This is a list of words related to bridge and skyscraper: concrete, blueprint, tall.
+This is a list of words related to POS and POS: '''
+
+prompt_posneg = '''This is a list of words that are related to ambulance but not doctor: siren, engine, fast.
+This is a list of words that are related to bat but not duck: cave, night, fur.
+This is a list of words that are related to queen but not king: regina, woman, wife.
+This is a list of words that are related to POS but not NEG: '''
+
+
 class GPT2PromptAssoc(Assoc):
-	def __init__(self, prompt=None, perm_cache=True):
+	# prompt is int: 1) 1 pos, 2) 2 pos, 3) posneg
+	def __init__(self, prompt=1, perm_cache=True):
 		super().__init__()
 		self.pipe = getGenPipe()
 		self.perm_cache = perm_cache #whether to permanently cache assocs or not
 		self.cache = {} #temp?(?)
-		if not prompt:
-			self.base_prompt = default_prompt
-		else:
-			self.base_prompt = prompt
+		
+		assert prompt > 0 and prompt < 4
+		
+		self.prompt_mode = prompt
 	
 	def preprocess(self,w):
 		return GPT2Preprocess(self.pipe.model, w)
@@ -255,6 +267,7 @@ class GPT2PromptAssoc(Assoc):
 	def singleAssoc(self,prompt):
 		if prompt in self.cache:
 			return self.cache[prompt]
+		print(prompt) #debug
 		raw = self.pipe(prompt)[0]['generated_text']
 		output = raw[len(prompt):]
 		newi = output.find('\n')
@@ -263,33 +276,47 @@ class GPT2PromptAssoc(Assoc):
 		parts = [s.strip() for s in output.split(",")]
 		parts = [sub(r'[^\w\s]', '', p) for p in parts if p]
 		self.cache[prompt] = parts
+		print(parts) #debug
 		return parts
+	
+	def fillPrompts(self, pos, neg):
+		assert len(pos) > 0
+		
+		ret = []
+		base = None
+		if self.prompt_mode == 2 and len(pos) > 1:
+			base = prompt_2pos
+			combos = combinations(pos, 2)
+			for w1, w2 in combos:
+				prompt = base.replace("POS",w1,1).replace("POS",w2,1)
+				ret.append(prompt)
+		elif self.prompt_mode == 3 and len(neg) > 0:
+			base = prompt_posneg
+			for p in pos:
+				for n in neg:
+					prompt = base.replace("POS",p,1).replace("NEG",n,1)
+					ret.append(prompt)
+		
+		if base is None: #catch all
+			assert not ret
+			base = prompt_1pos.replace("POS",pos[0])
+			for p in pos:
+				prompt = base.replace("POS",p,1)
+				ret.append(prompt)
+		
+		return ret
 	
 	#takes list of pos words and list of neg words and returns topn most similar words
 	def getAssocs(self, pos, neg, topn):
 		#print("gptp assocs:",pos)
 		
-		pos_c = self.base_prompt.count("POS")
-		neg_c = self.base_prompt.count("NEG")
-		
-		assert pos_c > 0 and neg_c < 2 #need 1+ pos, only handles 0-1 neg
-		
-		combos = combinations(pos,pos_c)
-		
 		ret = set()
-		for t in combos:
-			prompt = self.base_prompt
-			for w in t:
-				prompt = prompt.replace("POS", w, 1)
-			if neg_c < 1:
-				neg = [None]
-			for n in neg:
-				if n:
-					prompt = prompt.replace("NEG", n, 1)
-				#print("DEBUG prompt:",prompt)
-				assocs = self.singleAssoc(prompt)
-				#print(assocs,"\n")
-				ret.update(assocs) #TODO: make sure these are valid!
+		for prompt in self.fillPrompts(pos, neg):
+			#print("DEBUG prompt:",prompt)
+			assocs = self.singleAssoc(prompt)
+			#print(assocs,"\n")
+			ret.update(assocs) #TODO: make sure these are valid guesses!
+		
 		#Verified that w2v similarity probs don't sum to 1
 		return [(w,0.5) for w in ret] #Be careful with these probs! They will likely overshadow real words!
 
@@ -557,7 +584,7 @@ if __name__ == "__main__":
 	
 	gg = GPT2EmbedGuesser()
 	
-	for p in [prompt_2pos, prompt_2pos, prompt_posneg, prompt_posneg]:
+	for p in [1,1,2,2,3,3]:
 		m = Spymaster(GPT2PromptAssoc(p))
 		hint = m.makeHint(board, True)
 
@@ -565,7 +592,7 @@ if __name__ == "__main__":
 		
 		gg.newHint(hint)
 		choices = sum(board.values(), [])
-		print(gg.nextGuess(choices))
+		print(gg.nextGuess(choices),"\n")
 
 #
 
