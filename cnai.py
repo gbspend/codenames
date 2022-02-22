@@ -267,7 +267,7 @@ class GPT2PromptAssoc(Assoc):
 	def singleAssoc(self,prompt):
 		if prompt in self.cache:
 			return self.cache[prompt]
-		print(prompt) #debug
+		#print(prompt) #debug
 		raw = self.pipe(prompt)[0]['generated_text']
 		output = raw[len(prompt):]
 		newi = output.find('\n')
@@ -276,7 +276,7 @@ class GPT2PromptAssoc(Assoc):
 		parts = [s.strip() for s in output.split(",")]
 		parts = [sub(r'[^\w\s]', '', p) for p in parts if p]
 		self.cache[prompt] = parts
-		print(parts) #debug
+		#print(parts) #debug
 		return parts
 	
 	def fillPrompts(self, pos, neg):

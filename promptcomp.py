@@ -45,9 +45,9 @@ if __name__ == '__main__':
 	hinters = [
 		#("w2v",cnai.Spymaster(cnai.W2VAssoc())),
 		#("gpte", cnai.Spymaster(cnai.GPT2EmbedAssoc())),
-		("1pos", cnai.Spymaster(cnai.GPT2PromptAssoc())), #default is 1 pos
-		("2pos", cnai.Spymaster(cnai.GPT2PromptAssoc(prompt_2pos))),
-		("posneg", cnai.Spymaster(cnai.GPT2PromptAssoc(prompt_posneg)))
+		("1pos", cnai.Spymaster(cnai.GPT2PromptAssoc(1))), #default is 1 pos
+		("2pos", cnai.Spymaster(cnai.GPT2PromptAssoc(2))),
+		("posneg", cnai.Spymaster(cnai.GPT2PromptAssoc(3)))
 	]
 	guessers = [("w2v",cnai.W2VGuesser()), ("gpte", cnai.GPT2EmbedGuesser())]
 	
@@ -85,7 +85,7 @@ if __name__ == '__main__':
 	if results is None:
 		#dict: for each key, for each key store [win,loss]
 		results = {key : {op : [0,0] for op in opps.keys()} for key in team_names}
-	n_games = 10
+	n_games = 2 #10
 	
 	while True:
 		for combo in combos:
