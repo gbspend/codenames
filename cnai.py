@@ -90,7 +90,7 @@ def isValid(word, board_words):
 
 #list of lists into one list
 def flatten(t):
-    return [item for sublist in t for item in sublist]
+	return [item for sublist in t for item in sublist]
 
 def w2vPreprocess(model, w):
 	try:
@@ -232,7 +232,7 @@ class GPT2EmbedAssoc(Assoc):
 
 default_prompt = '''These words are related to ambulance: paramedic, emergency, doctor.
 These words are related to boat: water, fish, captain.
-These words are related to PROMPT: '''
+These words are related to POS: '''
 
 class GPT2PromptAssoc(Assoc):
 	def __init__(self, prompt=None, perm_cache=True):
@@ -252,8 +252,7 @@ class GPT2PromptAssoc(Assoc):
 		if not self.perm_cache:
 			self.cache = {}
 		
-	#TODO:
-	def testAssoc(self,prompt):
+	def singleAssoc(self,prompt):
 		if prompt in self.cache:
 			return self.cache[prompt]
 		raw = self.pipe(prompt)[0]['generated_text']
@@ -269,14 +268,28 @@ class GPT2PromptAssoc(Assoc):
 	#takes list of pos words and list of neg words and returns topn most similar words
 	def getAssocs(self, pos, neg, topn):
 		#print("gptp assocs:",pos)
-		#TODO:
+		
+		pos_c = self.base_prompt.count("POS")
+		neg_c = self.base_prompt.count("NEG")
+		
+		assert pos_c > 0 and neg_c < 2 #need 1+ pos, only handles 0-1 neg
+		
+		combos = combinations(pos,pos_c)
+		
 		ret = set()
-		for w in pos:
-			prompt = self.base_prompt.replace("PROMPT",w)
-			#print("DEBUG prompt:",prompt)
-			assocs = self.testAssoc(prompt)
-			#print(assocs,"\n")
-			ret.update(assocs) #TODO: make sure these are valid!
+		for t in combos:
+			prompt = self.base_prompt
+			for w in t:
+				prompt = prompt.replace("POS", w, 1)
+			if neg_c < 1:
+				neg = [None]
+			for n in neg:
+				if n:
+					prompt = prompt.replace("NEG", n, 1)
+				#print("DEBUG prompt:",prompt)
+				assocs = self.singleAssoc(prompt)
+				#print(assocs,"\n")
+				ret.update(assocs) #TODO: make sure these are valid!
 		#Verified that w2v similarity probs don't sum to 1
 		return [(w,0.5) for w in ret] #Be careful with these probs! They will likely overshadow real words!
 
@@ -508,6 +521,16 @@ class Cheatmaster(Spymaster):
 
 #=TEST======================================
 
+prompt_2pos = '''This is a list of words related to flag and state: country, government, county.
+This is a list of words related to mammoth and egypt: ancient, large, heavy.
+This is a list of words related to bridge and skyscraper: concrete, blueprint, tall.
+This is a list of words related to POS and POS: '''
+
+prompt_posneg = '''This is a list of words that are related to ambulance but not doctor: siren, engine, fast.
+This is a list of words that are related to bat but not duck: cave, night, fur.
+This is a list of words that are related to queen but not king: regina, woman, wife.
+This is a list of words that are related to POS but not NEG: '''
+
 if __name__ == "__main__":
 	board = {
 		'U': [
@@ -532,15 +555,17 @@ if __name__ == "__main__":
 		print(word, "%.4f" % prob)
 	'''
 	
-	m = Spymaster(GPT2EmbedAssoc())
-	hint = m.makeHint(board, True)
-	
-	print(hint)
-	
 	gg = GPT2EmbedGuesser()
-	gg.newHint(hint)
-	choices = sum(board.values(), [])
-	print(gg.nextGuess(choices))
+	
+	for p in [prompt_2pos, prompt_2pos, prompt_posneg, prompt_posneg]:
+		m = Spymaster(GPT2PromptAssoc(p))
+		hint = m.makeHint(board, True)
+
+		print(hint)
+		
+		gg.newHint(hint)
+		choices = sum(board.values(), [])
+		print(gg.nextGuess(choices))
 
 #
 
