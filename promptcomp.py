@@ -24,7 +24,7 @@ def backup(fname):
 
 
 prompt_2pos = '''This is a list of words related to flag and state: country, government, county.
-This is a list of words related to mammoth and egypt: ancient, large, heavy.
+This is a list of words related to mammoth and pyramid: ancient, large, heavy.
 This is a list of words related to bridge and skyscraper: concrete, blueprint, tall.
 This is a list of words related to POS and POS: '''
 
@@ -85,7 +85,7 @@ if __name__ == '__main__':
 	if results is None:
 		#dict: for each key, for each key store [win,loss]
 		results = {key : {op : [0,0] for op in opps.keys()} for key in team_names}
-	n_games = 2 #10
+	n_games = 10
 	
 	while True:
 		for combo in combos:

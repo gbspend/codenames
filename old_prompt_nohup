@@ -1,0 +1,21 @@
+1pos4w2v vs cheat1
+1pos4w2v vs cheat2
+1pos4w2v vs rand
+1pos4gpte vs cheat1
+1pos4gpte vs cheat2
+1pos4gpte vs rand
+2pos4w2v vs cheat1
+2pos4w2v vs cheat2
+2pos4w2v vs rand
+2pos4gpte vs cheat1
+2pos4gpte vs cheat2
+2pos4gpte vs rand
+posneg4w2v vs cheat1
+posneg4w2v vs cheat2
+posneg4w2v vs rand
+posneg4gpte vs cheat1
+posneg4gpte vs cheat2
+posneg4gpte vs rand
+
+{'1pos4w2v': {'cheat1': [0, 2], 'cheat2': [0, 2], 'rand': [1, 1]}, '1pos4gpte': {'cheat1': [0, 2], 'cheat2': [0, 2], 'rand': [2, 0]}, '2pos4w2v': {'cheat1': [0, 2], 'cheat2': [0, 2], 'rand': [1, 1]}, '2pos4gpte': {'cheat1': [0, 2], 'cheat2': [0, 2], 'rand': [1, 1]}, 'posneg4w2v': {'cheat1': [0, 2], 'cheat2': [0, 2], 'rand': [0, 2]}, 'posneg4gpte': {'cheat1': [0, 2], 'cheat2': [0, 2], 'rand': [1, 1]}}
+

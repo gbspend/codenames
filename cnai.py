@@ -230,12 +230,12 @@ class GPT2EmbedAssoc(Assoc):
 		final_words = dists2words(parts_with_probs)
 		return final_words
 
-prompt_1pos = '''These words are related to ambulance: paramedic, emergency, doctor.
-These words are related to boat: water, fish, captain.
-These words are related to POS: '''
+prompt_1pos = '''This is a list of words related to ambulance: paramedic, emergency, doctor.
+This is a list of words related to boat: water, fish, captain.
+This is a list of words related to POS: '''
 
 prompt_2pos = '''This is a list of words related to flag and state: country, government, county.
-This is a list of words related to mammoth and egypt: ancient, large, heavy.
+This is a list of words related to mammoth and pyramid: ancient, large, heavy.
 This is a list of words related to bridge and skyscraper: concrete, blueprint, tall.
 This is a list of words related to POS and POS: '''
 
@@ -269,6 +269,7 @@ class GPT2PromptAssoc(Assoc):
 			return self.cache[prompt]
 		#print(prompt) #debug
 		raw = self.pipe(prompt)[0]['generated_text']
+		#print(raw)
 		output = raw[len(prompt):]
 		newi = output.find('\n')
 		if newi > 0:
@@ -547,16 +548,6 @@ class Cheatmaster(Spymaster):
 		return ("CHEAT", 9999) #this is so the cheat guesser can (perfectly) guess as many times as it needs
 
 #=TEST======================================
-
-prompt_2pos = '''This is a list of words related to flag and state: country, government, county.
-This is a list of words related to mammoth and egypt: ancient, large, heavy.
-This is a list of words related to bridge and skyscraper: concrete, blueprint, tall.
-This is a list of words related to POS and POS: '''
-
-prompt_posneg = '''This is a list of words that are related to ambulance but not doctor: siren, engine, fast.
-This is a list of words that are related to bat but not duck: cave, night, fur.
-This is a list of words that are related to queen but not king: regina, woman, wife.
-This is a list of words that are related to POS but not NEG: '''
 
 if __name__ == "__main__":
 	board = {
