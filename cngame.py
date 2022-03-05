@@ -1,4 +1,3 @@
-import cnai
 from random import randint, sample, shuffle
 
 BOARD_SIZE = 25
@@ -88,7 +87,7 @@ class Codenames:
 			#debug:
 			#print(self.hist[2:])
 			#print()
-			
+			print('b' if self.bluesTurn else 'r',end='')
 			master = self.blue_spymaster if self.bluesTurn else self.red_spymaster
 			guesser = self.blue_guesser if self.bluesTurn else self.red_guesser
 			

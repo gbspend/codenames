@@ -5,7 +5,7 @@ import cnai
 import cngame
 import json
 import os
-from itertools import combinations
+#from itertools import combinations
 from sys import argv
 
 #if fname exists, rename to [fname].bak

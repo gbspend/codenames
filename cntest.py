@@ -70,7 +70,7 @@ if __name__ == "__main__":
 		winner, hist = testCheatVsGPTEGPTE(1,False)
 		print(i, "Blue won..." if winner else "RED WON!")
 		if not winner:
-			pprintHist(hist)
+			cngame.pprintHist(hist)
 			print()
 	
 #

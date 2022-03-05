@@ -4,7 +4,7 @@ import torch
 from collections import defaultdict
 from itertools import chain, combinations
 from nltk.corpus import words
-from random import choice, randrange
+from random import choice
 from re import sub
 from sentence_transformers import util
 from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer, logging, pipeline
@@ -19,6 +19,7 @@ w2v_model = None
 def getW2vModel():
 	global w2v_model
 	if not w2v_model:
+		print("building w2v model")
 		w2v_model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True, limit=500000)
 	return w2v_model
 
@@ -26,6 +27,7 @@ gpt_model = None
 def getGptModel():
 	global gpt_model
 	if not gpt_model:
+		print("building gpt2 model")
 		gpt_model = GPT2Model.from_pretrained("gpt2")
 	return gpt_model
 
@@ -33,6 +35,7 @@ gpt_lm = None
 def getGptLM():
 	global gpt_lm
 	if not gpt_lm:
+		print("building gpt2 lm model")
 		gpt_lm = GPT2LMHeadModel.from_pretrained("gpt2")
 	return gpt_lm
 
@@ -40,6 +43,7 @@ gpt_tok = None
 def getGptTok():
 	global gpt_tok
 	if not gpt_tok:
+		print("building tok")
 		gpt_tok = GPT2Tokenizer.from_pretrained("gpt2")
 	return gpt_tok
 
@@ -47,6 +51,7 @@ gen_pipe = None
 def getGenPipe():
 	global gen_pipe
 	if not gen_pipe:
+		print("building pipeline")
 		gen_pipe = pipeline("text-generation")
 		gen_pipe.model.config.max_length=100
 	return gen_pipe

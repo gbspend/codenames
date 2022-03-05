@@ -76,6 +76,8 @@ if __name__ == '__main__':
 		results = {key : {sub : [0,0] for sub in team_names if sub != key} for key in team_names}
 	n_games = 10
 	
+	print("NO ASSASSIN") #test
+
 	while True:
 		for combo in combos:
 			blue_n,red_n = combo
@@ -84,7 +86,11 @@ if __name__ == '__main__':
 			print(blue_n,'vs',red_n)
 
 			for i in range(n_games):
+				print(' init ', end='')
 				game = cngame.Codenames(*params)
+				print('start ', end='')
+				game.count_assassin = False #test
+				#print('.', end='')
 				blue_won,hist = game.play()
 				if blue_won:
 					winner = blue_n
@@ -94,6 +100,7 @@ if __name__ == '__main__':
 					loser = blue_n
 				results[winner][loser][0]+=1
 				results[loser][winner][1]+=1
+			print()
 		
 		print()
 		print(results)
