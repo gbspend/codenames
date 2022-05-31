@@ -9,6 +9,8 @@ from re import sub
 from sentence_transformers import util
 from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer, logging, pipeline
 logging.set_verbosity_error()
+import requests
+from auth import jur_auth
 
 #=HELPERS===================================
 
@@ -55,6 +57,7 @@ def getGenPipe():
 		gen_pipe = pipeline("text-generation")
 		gen_pipe.model.config.max_length=100
 	return gen_pipe
+
 #------------------------------------
 
 #converts (parts,prob) into (longest_str,mean_prob)
@@ -120,6 +123,48 @@ def embed2Tok(lm, embed):
 	probs = head(embed)
 	return torch.argmax(probs)
 # ｡･:*:･ﾟ★,｡･:*:･ﾟ☆
+
+def jurassic(prompt, numResults = 1, maxTokens = 64, temp = 0.7, topKReturn = 0, topP = 1.0, stopSequences = []):
+	resp = requests.post("https://api.ai21.com/studio/v1/j1-jumbo/complete",
+		headers={"Authorization": jur_auth},
+		json={
+			"prompt": prompt,
+			"numResults": numResults,
+			"maxTokens": maxTokens,
+			"temperature": temp,
+			"topKReturn": topKReturn,
+			"topP": topP,
+			"countPenalty": {
+				"scale": 0,
+				"applyToNumbers": False,
+				"applyToPunctuations": False,
+				"applyToStopwords": False,
+				"applyToWhitespaces": False,
+				"applyToEmojis": False
+			},
+			"frequencyPenalty": {
+				"scale": 0,
+				"applyToNumbers": False,
+				"applyToPunctuations": False,
+				"applyToStopwords": False,
+				"applyToWhitespaces": False,
+				"applyToEmojis": False
+			},
+			"presencePenalty": {
+				"scale": 0,
+				"applyToNumbers": False,
+				"applyToPunctuations": False,
+				"applyToStopwords": False,
+				"applyToWhitespaces": False,
+				"applyToEmojis": False
+		  },
+		  "stopSequences": stopSequences
+		}
+	)
+	d = resp.json()
+	compls = d['completions']
+	ret = [c['data']['text'] for c in compls]
+	return ret, d
 
 #=ASSOC=====================================
 
@@ -325,6 +370,24 @@ class GPT2PromptAssoc(Assoc):
 		
 		#Verified that w2v similarity probs don't sum to 1
 		return [(w,0.5) for w in ret] #Be careful with these probs! They will likely overshadow real words!
+
+class JurassicAssoc(Assoc):
+	def __init__(self):
+		super().__init__()
+	
+	#returns a list of potential associations with a confidence/prob for each
+	#abstract function
+	def getAssocs(self, pos, neg, topn):
+		
+		raise NotImplementedError
+	
+	#preprocess word before getting embedding (e.g. w2v checks capitalization, gpt converts _ to space)
+	def preprocess(self, w):
+		return w.replace("_", " ")
+	
+	#gives subclasses option of clearing cache after each hint gen cycle (balance between cached and not)
+	def clearCache(self):
+		return
 
 #=GUESSER===================================
 
