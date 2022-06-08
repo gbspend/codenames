@@ -166,6 +166,55 @@ def jurassic(prompt, numResults = 1, maxTokens = 64, temp = 0.7, topKReturn = 0,
 	ret = [c['data']['text'] for c in compls]
 	return ret, d
 
+prompt_1pos = '''This is a list of words related to ambulance: paramedic, emergency, doctor.
+This is a list of words related to boat: water, fish, captain.
+This is a list of words related to POS: '''
+
+prompt_2pos = '''This is a list of words related to flag and state: country, government, county.
+This is a list of words related to mammoth and pyramid: ancient, large, heavy.
+This is a list of words related to bridge and skyscraper: concrete, blueprint, tall.
+This is a list of words related to POS and POS: '''
+
+prompt_posneg = '''This is a list of words that are related to ambulance but not doctor: siren, engine, fast.
+This is a list of words that are related to bat but not duck: cave, night, fur.
+This is a list of words that are related to queen but not king: regina, woman, wife.
+This is a list of words that are related to POS but not NEG: '''
+
+def fillPrompts(mode, pos, neg):
+	assert len(pos) > 0
+
+	ret = []
+	base = None
+	if mode == 2 and len(pos) > 1:
+		base = prompt_2pos
+		combos = combinations(pos, 2)
+		for w1, w2 in combos:
+			prompt = base.replace("POS",w1,1).replace("POS",w2,1)
+			ret.append(prompt)
+	elif mode == 3 and len(neg) > 0:
+		base = prompt_posneg
+		for p in pos:
+			for n in neg:
+				prompt = base.replace("POS",p,1).replace("NEG",n,1)
+				ret.append(prompt)
+
+	if base is None: #catch all
+		assert not ret
+		base = prompt_1pos.replace("POS",pos[0])
+		for p in pos:
+			prompt = base.replace("POS",p,1)
+			ret.append(prompt)
+
+	return ret
+
+def completion2candidates(compl):
+	newi = compl.find('\n')
+	if newi > 0:
+		compl = compl[:newi]
+	parts = [s.strip() for s in compl.split(",")]
+	parts = [sub(r'[^\w\s]', '', p) for p in parts if p]
+	return parts
+
 #=ASSOC=====================================
 
 #associates words for a given set of positively and negatively associated words
@@ -280,20 +329,6 @@ class GPT2EmbedAssoc(Assoc):
 		final_words = dists2words(parts_with_probs)
 		return final_words
 
-prompt_1pos = '''This is a list of words related to ambulance: paramedic, emergency, doctor.
-This is a list of words related to boat: water, fish, captain.
-This is a list of words related to POS: '''
-
-prompt_2pos = '''This is a list of words related to flag and state: country, government, county.
-This is a list of words related to mammoth and pyramid: ancient, large, heavy.
-This is a list of words related to bridge and skyscraper: concrete, blueprint, tall.
-This is a list of words related to POS and POS: '''
-
-prompt_posneg = '''This is a list of words that are related to ambulance but not doctor: siren, engine, fast.
-This is a list of words that are related to bat but not duck: cave, night, fur.
-This is a list of words that are related to queen but not king: regina, woman, wife.
-This is a list of words that are related to POS but not NEG: '''
-
 
 class GPT2PromptAssoc(Assoc):
 	# prompt is int: 1) 1 pos, 2) 2 pos, 3) posneg
@@ -321,48 +356,24 @@ class GPT2PromptAssoc(Assoc):
 		raw = self.pipe(prompt)[0]['generated_text']
 		#print(raw)
 		output = raw[len(prompt):]
+		''' #refactored out above!
 		newi = output.find('\n')
 		if newi > 0:
 			output = output[:newi]
 		parts = [s.strip() for s in output.split(",")]
 		parts = [sub(r'[^\w\s]', '', p) for p in parts if p]
+		'''
+		parts = completion2candidates(output)
 		self.cache[prompt] = parts
 		#print(parts) #debug
 		return parts
-	
-	def fillPrompts(self, pos, neg):
-		assert len(pos) > 0
-		
-		ret = []
-		base = None
-		if self.prompt_mode == 2 and len(pos) > 1:
-			base = prompt_2pos
-			combos = combinations(pos, 2)
-			for w1, w2 in combos:
-				prompt = base.replace("POS",w1,1).replace("POS",w2,1)
-				ret.append(prompt)
-		elif self.prompt_mode == 3 and len(neg) > 0:
-			base = prompt_posneg
-			for p in pos:
-				for n in neg:
-					prompt = base.replace("POS",p,1).replace("NEG",n,1)
-					ret.append(prompt)
-		
-		if base is None: #catch all
-			assert not ret
-			base = prompt_1pos.replace("POS",pos[0])
-			for p in pos:
-				prompt = base.replace("POS",p,1)
-				ret.append(prompt)
-		
-		return ret
 	
 	#takes list of pos words and list of neg words and returns topn most similar words
 	def getAssocs(self, pos, neg, topn):
 		#print("gptp assocs:",pos)
 		
 		ret = set()
-		for prompt in self.fillPrompts(pos, neg):
+		for prompt in fillPrompts(self.prompt_mode, pos, neg):
 			#print("DEBUG prompt:",prompt)
 			assocs = self.singleAssoc(prompt)
 			#print(assocs,"\n")
@@ -372,14 +383,45 @@ class GPT2PromptAssoc(Assoc):
 		return [(w,0.5) for w in ret] #Be careful with these probs! They will likely overshadow real words!
 
 class JurassicAssoc(Assoc):
-	def __init__(self):
+	def __init__(self, prompt=2):
 		super().__init__()
+		assert prompt > 0 and prompt < 4
+		self.prompt_mode = prompt
 	
 	#returns a list of potential associations with a confidence/prob for each
 	#abstract function
 	def getAssocs(self, pos, neg, topn):
-		
-		raise NotImplementedError
+		cands = defaultdict(float) #map candidate to max prob \+1
+		for prompt in fillPrompts(self.prompt_mode, pos, neg):
+			prompt = prompt.strip() #jurassic recommends not ending with space
+			compl, d = jurassic(prompt)
+			assocs = completion2candidates(compl[0])
+			
+			#TODO: figure out tokenization, replace weird _ with space
+			toks = d['completions'][0]['data']['tokens']
+			nl_tok = '<|newline|>'
+			with_prob = [] #it's OK for probs to be log (they're never combined with others \+1)
+			for w in assocs:
+				prob = None
+				for o in toks:
+					gt = o['generatedToken']
+					tok = gt['token']
+					if tok == nl_tok:
+						break
+					if w in tok:
+						prob = gt['logprob']
+						break
+				if prob is None:
+					print("PROB NOT FOUND FOR:",w)
+					#print(toks)
+					#assert False
+				else:
+					if prob > cands[w]: #defaultdict will always start @ 0
+						cands[w] = prob
+					
+		#convert cands to list of tuples
+		ret = [(c,cands[c]) for c in cands]
+		return ret
 	
 	#preprocess word before getting embedding (e.g. w2v checks capitalization, gpt converts _ to space)
 	def preprocess(self, w):
@@ -633,6 +675,26 @@ if __name__ == "__main__":
 	
 	pos = board['U']
 	neg = board['R'] + board['A']
+	
+	jm = Spymaster(JurassicAssoc())
+	hint = jm.makeHint(board, True)
+	print(hint)
+	
+	#========================================
+	
+	all_prompts = fillPrompts(2,pos,None)
+	
+	TESTS = 5
+	for i in range(TESTS):
+		p = choice(all_prompts)
+		text,d = jurassic(p)
+		cands = completion2candidates(text[0])
+		print(p.split("\n")[-1])
+		print("; ".join(cands))
+	
+	exit(0)
+	
+	#========================================
 	
 	'''
 	g = GPT2EmbedAssoc()

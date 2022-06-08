@@ -8,6 +8,8 @@ import os
 #from itertools import combinations
 from sys import argv
 
+from cnai import jurassic
+
 #if fname exists, rename to [fname].bak
 def backup(fname):
 	bak = fname+".bak"
